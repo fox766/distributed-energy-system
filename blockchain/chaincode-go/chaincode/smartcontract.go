@@ -6,7 +6,7 @@ import (
 	//"strconv"
 	//"time"
 
-	"github.com/hyperledger/fabric-contract-api-go/contractapi"
+	"github.com/hyperledger/fabric-contract-api-go/v2/contractapi"
 )
 
 
@@ -74,3 +74,44 @@ func (s *SmartContract) ReadAsset(ctx contractapi.TransactionContextInterface, i
 }
 
 // ========== 核心功能 ==========
+
+
+
+// 注册用户
+// func (s *SmartContract) RegisterUser(ctx contractapi.TransactionContextInterface, userid string, username string, passwordhash string, balance float64) error {
+// 	user := User{
+// 		UserID:       userid,
+// 		UserName:     username,
+// 		PasswordHash: passwordhash,
+// 		Balance:      balance,	
+// 	}
+
+// 	userAsBytes, err := json.Marshal(user)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	err = ctx.GetStub().PutState(userid, userAsBytes)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
+
+func (s *SmartContract) RegisterUser(ctx contractapi.TransactionContextInterface) error {
+	// user := User{
+	// 	UserID:       userid,
+	// 	UserName:     username,
+	// 	PasswordHash: passwordhash,
+	// 	Balance:      balance,	
+	// }
+
+	// userAsBytes, err := json.Marshal(user)
+	// if err != nil {
+	// 	return err
+	// }
+	// err = ctx.GetStub().PutState(userid, userAsBytes)
+	// if err != nil {
+	// 	return err
+	// }
+	return nil
+}
