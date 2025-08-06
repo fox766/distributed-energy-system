@@ -18,7 +18,7 @@ const (
 	mspID        = "Org1MSP"
 	peerEndpoint = "dns:///localhost:7051"
 	gatewayPeer  = "peer0.org1.example.com"
-	cryptoPath   = "../../..//blockchain/network/organizations/peerOrganizations/org1.example.com"
+	cryptoPath   = "../../blockchain/network/organizations/peerOrganizations/org1.example.com"
 	certPath     = cryptoPath + "/users/User1@org1.example.com/msp/signcerts"
 	keyPath      = cryptoPath + "/users/User1@org1.example.com/msp/keystore"
 	tlsCertPath  = cryptoPath + "/peers/peer0.org1.example.com/tls/ca.crt"

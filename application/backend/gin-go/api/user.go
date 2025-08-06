@@ -3,52 +3,63 @@ package api
 import (
 	//"fmt"
 	"strconv"
-	//"net/http"
+	"net/http"
 
-	//"gin-app/fabric"
+	"backend/gin-go/fabric"
+	"backend/mysql"
 
-	//"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin"
 )
 
-// func (s *SmartContract) RegisterUser(ctx contractapi.TransactionContextInterface, userid string, username string, passwordhash string, balance float64) error {
-// 	user := User{
-// 		UserID:       userid,
-// 		UserName:     username,
-// 		PasswordHash: passwordhash,
-// 		Balance:      balance,	
-// 	}
 
-// 	userAsBytes, err := json.Marshal(user)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	err = ctx.GetStub().PutState(userid, userAsBytes)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
+func RegisterUser(c *gin.Context) {
+	var userid, username, password string
+	var balance float64
 
-// var req Asset
-// 	if err := c.ShouldBindJSON(&req); err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-// 		return
-// 	}
+	userid = genuserid()
 
-// 	_, err := fabric.Contract.SubmitTransaction("CreateAsset",
-// 		req.ID, req.Color,
-// 		strconv.Itoa(req.Size),
-// 		req.Owner,
-// 		strconv.Itoa(req.AppraisedValue),
-// 	)
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create asset: " + err.Error()})
-// 		return
-// 	}
+	username = c.Param("username")
+	password = c.Param("password")
+	
+	if err := mysql.InsertUser(userid, username, password); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to register: " + err.Error()})
+		return
+	}
 
-// 	c.JSON(http.StatusOK, gin.H{"message": "Asset created successfully"})
+	balance = 0.0
+	balanceStr := strconv.FormatFloat(balance, 'f', 2, 64) 
 
+	_, err := fabric.Contract.SubmitTransaction("RegisterUser", userid, username, balanceStr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to register: " + err.Error()})
+		return
+	}
 
+	c.JSON(http.StatusOK, "Successfully Register." + "Your userid is " + userid)
+
+}
+
+func Login (c *gin.Context) {
+	var err error
+	var userid string
+
+	username := c.Param("username")
+	password := c.Param("password")
+
+	userid, err = mysql.GetUserID(username)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "username not exists",})
+		return
+	}
+
+	err = mysql.CheckPassword(username, password)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "wrong password.",})
+		return
+	}
+
+	c.JSON(http.StatusOK, "Successfully login. Hi, " + userid)
+}
 
 
 var CNT_USER int
@@ -63,6 +74,6 @@ func genuserid() (userid string){
 	return userid
 }
 
-func genUseridInit() {
+func GenUseridInit() {
 	CNT_USER = 0
 }

@@ -12,11 +12,5 @@ type Asset struct {
 type User struct {
 	UserID       string   `json:"userID"`
 	UserName     string   `json:"username"`
-	PasswordHash string   `json:"passwordHash"`
 	Balance      float64  `json:"balance"`
-}
-
-type registerUser struct {
-	username string `json:"username"`
-	password string `json:password"`
 }

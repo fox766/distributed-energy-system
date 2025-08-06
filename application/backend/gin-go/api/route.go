@@ -9,6 +9,6 @@ import (
 func RegisterAssetRoutes(r *gin.Engine) {
 	r.GET("/init", InitLedger)
 	r.GET("/asset/:id", ReadAsset)
-	r.GET("/register", RegisterUser)
-	r.GET("/delete/:id", DeleteAsset)
+	r.GET("/register/:username/:password", RegisterUser)
+	r.GET("/login/:username/:password", Login)
 }
