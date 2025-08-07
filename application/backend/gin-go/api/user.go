@@ -7,10 +7,13 @@ import (
 
 	"backend/gin-go/fabric"
 	"backend/mysql"
+	"backend/jwt"
 
 	"github.com/gin-gonic/gin"
 )
 
+
+var CURRENT_USER string
 
 func RegisterUser(c *gin.Context) {
 	var userid, username, password string
@@ -58,7 +61,21 @@ func Login (c *gin.Context) {
 		return
 	}
 
+	CURRENT_USER, err = jwt.GenToken(userid)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "failed to generate token.",})
+		return
+	}
+
 	c.JSON(http.StatusOK, "Successfully login. Hi, " + userid)
+}
+
+func Logout(c *gin.Context) {
+	if CURRENT_USER == "" {
+		c.JSON(http.StatusOK, gin.H{"message": "NO user logged in, no need to log out.",})
+	}
+	CURRENT_USER = ""
+	c.JSON(http.StatusOK, "Successfully logout, Bye.")
 }
 
 
@@ -74,6 +91,7 @@ func genuserid() (userid string){
 	return userid
 }
 
-func GenUseridInit() {
+func UserInit() {
 	CNT_USER = 0
+	CURRENT_USER = ""
 }

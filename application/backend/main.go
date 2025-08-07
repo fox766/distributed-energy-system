@@ -14,8 +14,8 @@ func main() {
 
 	r := gin.Default()
 	api.RegisterAssetRoutes(r)
-	// 初始化id
-	api.GenUseridInit()
+	// 用户初始化
+	api.UserInit()
 
 	// 初始化数据库
 	if err := mysql.Initmysql(); err != nil {
