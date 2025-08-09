@@ -30,6 +30,7 @@ type Order struct {
 	PartyB         string    `json:"partyB"`    // buyer
  	Amount         float64   `json:"amount"`
 	Price          float64   `json:"price"`
+	Fee            float64   `json:"fee"`
 	Status         string    `json:"status"` // CREATED/MATCHED/COMPLETED
-	CreatedAt      time.time `json:"createdAt"`
+	CreatedAt      time.Time `json:"createdAt"`
 }

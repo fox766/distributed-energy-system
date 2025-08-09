@@ -4,7 +4,7 @@ import (
 	"github.com/golang-jwt/jwt"
 )
 
-type loginUser struct {
+type LoginUser struct {
 	UserID     string
 	jwt.StandardClaims
 }

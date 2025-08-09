@@ -4,6 +4,7 @@ import (
 	//"fmt"
 	"strconv"
 	"net/http"
+	"encoding/json"
 
 	"backend/gin-go/fabric"
 	"backend/mysql"
@@ -30,9 +31,11 @@ func RegisterUser(c *gin.Context) {
 	}
 
 	balance = 0.0
+	userrole := "User"
+	availableStr := strconv.FormatFloat(0.0, 'f', 2, 64)
 	balanceStr := strconv.FormatFloat(balance, 'f', 2, 64) 
 
-	_, err := fabric.Contract.SubmitTransaction("RegisterUser", userid, username, balanceStr)
+	_, err := fabric.Contract.SubmitTransaction("RegisterUser", userid, username, userrole, availableStr, balanceStr)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to register: " + err.Error()})
 		return
@@ -40,6 +43,20 @@ func RegisterUser(c *gin.Context) {
 
 	c.JSON(http.StatusOK, "Successfully Register." + "Your userid is " + userid)
 
+}
+
+func GetUser(c *gin.Context) {
+	var userid string
+	userid = c.Param("userid")
+	result, err := fabric.Contract.EvaluateTransaction("GetUser", userid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read user: " + err.Error()})
+		return
+	}
+
+	var user User
+	json.Unmarshal(result, &user)
+	c.JSON(http.StatusOK, user)
 }
 
 func Login (c *gin.Context) {
@@ -94,4 +111,8 @@ func genuserid() (userid string){
 func UserInit() {
 	CNT_USER = 0
 	CURRENT_USER = ""
+}
+
+func UserLogged() bool{
+	return CURRENT_USER != ""
 }

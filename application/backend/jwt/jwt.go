@@ -10,7 +10,7 @@ var TokenExpireDuration = time.Hour * 6
 
 func GenToken(userid string) (string, error) {	
 	secret := []byte("test")
-	tmp := loginUser{
+	tmp := LoginUser{
 		UserID:   userid,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(TokenExpireDuration).Unix(),
@@ -19,4 +19,17 @@ func GenToken(userid string) (string, error) {
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, tmp)
 	return token.SignedString(secret)
+}
+
+func ParseToken(tokenString string) (*LoginUser, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &LoginUser{}, func(token *jwt.Token) (i interface{}, err error) {
+		return "test", nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if userinfo, ok := token.Claims.(*LoginUser); ok && token.Valid {
+		return userinfo, nil
+	}
+	return nil, err
 }

@@ -24,6 +24,37 @@ func PasswordVerify(password, hash string) bool {
 
 var db *sql.DB
 
+func InitUserTable(db *sql.DB) error {
+	var err error
+	sqlStr := "DROP TABLE IF EXISTS users"
+	_, err = db.Exec(sqlStr)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec("CREATE TABLE IF NOT EXISTS users (user_id VARCHAR(50) PRIMARY KEY, username VARCHAR(50) UNIQUE NOT NULL, passwordhash VARCHAR(255) NOT NULL)")
+	if err != nil {
+		return err
+	}
+	return nil 
+}
+
+
+func InitOrderTable(db *sql.DB) error {
+	var err error
+	sqlStr := "DROP TABLE IF EXISTS orders"
+	_, err = db.Exec(sqlStr)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec("CREATE TABLE IF NOT EXISTS orders (order_id VARCHAR(50) PRIMARY KEY, partyA VARCHAR(50) NOT NULL, partyB VARCHAR(50) NOT NULL, status VARCHAR(50) NOT NULL)")
+	if err != nil {
+		return err
+	}
+	return nil 
+}
+
 func Initmysql() (err error) {
 	db_name := "fabric_mysql"
 	dsn := "root:fabric@tcp(127.0.0.1:3337)/"
@@ -43,16 +74,14 @@ func Initmysql() (err error) {
 	db.Exec("CREATE DATABASE IF NOT EXISTS " + db_name)
 	db.Exec("USE " + db_name)
 
-	// for test, every time create a new table
-	sqlStr := "DROP TABLE IF EXISTS users"
-	_, err = db.Exec(sqlStr)
+	err = InitUserTable(db)
 	if err != nil {
-		panic(err.Error())
+		return fmt.Errorf("failed to InitUserTable.")
 	}
 
-	_, err = db.Exec("CREATE TABLE IF NOT EXISTS users (user_id VARCHAR(50) PRIMARY KEY, username VARCHAR(50) UNIQUE NOT NULL, passwordhash VARCHAR(255) NOT NULL)")
+	err = InitOrderTable(db) 
 	if err != nil {
-		panic(err.Error())
+		return fmt.Errorf("failed to InitUserTable.")
 	}
 
 	dsn += db_name
