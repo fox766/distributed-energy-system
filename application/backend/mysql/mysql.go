@@ -101,6 +101,50 @@ func Initmysql() (err error) {
 }
 
 
+func UpdateOrderStatus(orderid, newStatus string) (err error) {
+    var cnt int64
+    sqlStr := "select count(order_id) from orders where order_id = ?"
+    err = db.QueryRow(sqlStr, orderid).Scan(&cnt)
+    if err != nil {
+        return err
+    }
+
+    if cnt == 0 {
+        return errors.New("order_id does not exist.")
+    }
+
+    sqlStr = "update orders set status = ? where order_id = ?"
+    _, err = db.Exec(sqlStr, newStatus, orderid)
+    if err != nil {
+        return err
+    }
+	
+    return nil
+}
+
+
+func InsertOrder(orderid, partyA, partyB, status string) (err error) {
+	var cnt int64
+
+	sqlStr := "select count(order_id) from orders where order_id = ?"
+	err = db.QueryRow(sqlStr, orderid).Scan(&cnt)
+	if err != nil {
+		return err
+	}
+
+	if cnt > 0 {
+		return errors.New("order_id already exists.")
+	}
+
+	sqlStr = "insert into orders(order_id,partyA,partyB,status) values(?,?,?,?)"
+	_, err = db.Exec(sqlStr, orderid, partyA, partyB, status)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 
 // Insert User
 func InsertUser(userid, username, password string) (err error) {

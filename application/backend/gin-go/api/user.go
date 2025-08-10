@@ -15,6 +15,7 @@ import (
 
 
 var CURRENT_USER string
+var USER_ID_USED bool
 
 func RegisterUser(c *gin.Context) {
 	var userid, username, password string
@@ -27,6 +28,7 @@ func RegisterUser(c *gin.Context) {
 	
 	if err := mysql.InsertUser(userid, username, password); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to register: " + err.Error()})
+		UserNotUsed()
 		return
 	}
 
@@ -38,11 +40,30 @@ func RegisterUser(c *gin.Context) {
 	_, err := fabric.Contract.SubmitTransaction("RegisterUser", userid, username, userrole, availableStr, balanceStr)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to register: " + err.Error()})
+		UserNotUsed()
 		return
 	}
 
-	c.JSON(http.StatusOK, "Successfully Register." + "Your userid is " + userid)
+	//c.JSON(http.StatusOK, "Successfully Register." + "Your userid is " + userid)
+	c.String(http.StatusOK, "Successfully Register." + "Your userid is " + userid + "\n")
 
+}
+
+func UpdateUser(c *gin.Context) {
+	var userid string
+	var available, balance string
+
+	userid = c.Param("userid")
+	available = c.Param("available")
+	balance = c.Param("balance")
+	
+	_, err := fabric.Contract.SubmitTransaction("UpdateUser", userid, available, balance)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update userinfo: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, "Successfully Update User info. " + "Your available is " + available + ", balance is " + balance)
+	c.String(200, "\n")
 }
 
 func GetUser(c *gin.Context) {
@@ -57,6 +78,7 @@ func GetUser(c *gin.Context) {
 	var user User
 	json.Unmarshal(result, &user)
 	c.JSON(http.StatusOK, user)
+	c.String(200, "\n")
 }
 
 func Login (c *gin.Context) {
@@ -85,14 +107,17 @@ func Login (c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, "Successfully login. Hi, " + userid)
+	c.String(200, "\n")
 }
 
 func Logout(c *gin.Context) {
 	if CURRENT_USER == "" {
 		c.JSON(http.StatusOK, gin.H{"message": "NO user logged in, no need to log out.",})
+		return
 	}
 	CURRENT_USER = ""
 	c.JSON(http.StatusOK, "Successfully logout, Bye.")
+	c.String(200, "\n")
 }
 
 
@@ -101,16 +126,24 @@ var CNT_USER int
 func genuserid() (userid string){
 	var number string
 
-	CNT_USER += 1
+	if USER_ID_USED {
+		CNT_USER += 1
+	}
 	number = strconv.Itoa(CNT_USER)
 	userid = "energy_user_"+number
-
+	USER_ID_USED = true
 	return userid
+}
+
+
+func UserNotUsed() {
+	USER_ID_USED = false
 }
 
 func UserInit() {
 	CNT_USER = 0
 	CURRENT_USER = ""
+	USER_ID_USED = true
 }
 
 func UserLogged() bool{

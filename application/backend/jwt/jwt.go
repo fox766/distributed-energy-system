@@ -23,7 +23,7 @@ func GenToken(userid string) (string, error) {
 
 func ParseToken(tokenString string) (*LoginUser, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &LoginUser{}, func(token *jwt.Token) (i interface{}, err error) {
-		return "test", nil
+		return []byte("test"), nil
 	})
 	if err != nil {
 		return nil, err

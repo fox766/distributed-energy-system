@@ -99,8 +99,14 @@ func (s *SmartContract) UpdateUser(ctx contractapi.TransactionContextInterface, 
 	if (err != nil) {
 		return fmt.Errorf("failed to get user while updating user info: %v", err)
 	}
-	user.Available = available
-	user.Balance = balance
+
+	// if available or balance < 0, do not update
+	if available >= 0 {
+		user.Available = available
+	}
+	if balance >= 0 {
+		user.Balance = balance
+	}
 
 	userJSON, err := json.Marshal(user)
 	if err != nil {
@@ -278,12 +284,22 @@ func (s *SmartContract) SettleOrder(ctx contractapi.TransactionContextInterface,
 	}
 
 	userB.Balance -= altogether
-	userA.Balance += altogether - order.Fee
+	userA.Balance += altogether
 	if err = s.UpdateUser(ctx, userA.UserID, userA.Available, userA.Balance); err != nil {
 		return err
 	}
 	if err = s.UpdateUser(ctx, userB.UserID, userB.Available, userB.Balance); err != nil {
 		return err
+	}
+
+	order.Status = "FINISHED"
+	orderJSON, err := json.Marshal(order)
+	if err != nil {
+		return fmt.Errorf("failed to marshal: %v", err)
+	}
+
+	if err := ctx.GetStub().PutState(id, orderJSON); err != nil {
+		return fmt.Errorf("failed to save to the world state %v", err)
 	}
 
 	//
