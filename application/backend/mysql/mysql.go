@@ -48,7 +48,7 @@ func InitOrderTable(db *sql.DB) error {
 		return err
 	}
 
-	_, err = db.Exec("CREATE TABLE IF NOT EXISTS orders (order_id VARCHAR(50) PRIMARY KEY, partyA VARCHAR(50) NOT NULL, partyB VARCHAR(50) NOT NULL, status VARCHAR(50) NOT NULL)")
+	_, err = db.Exec("CREATE TABLE IF NOT EXISTS orders (order_id VARCHAR(50) PRIMARY KEY, partyA VARCHAR(50) NOT NULL, partyB VARCHAR(50) NOT NULL, status VARCHAR(50) NOT NULL, amount FLOAT)")
 	if err != nil {
 		return err
 	}
@@ -123,7 +123,7 @@ func UpdateOrderStatus(orderid, newStatus string) (err error) {
 }
 
 
-func InsertOrder(orderid, partyA, partyB, status string) (err error) {
+func InsertOrder(orderid, partyA, partyB, status string, amount float64) (err error) {
 	var cnt int64
 
 	sqlStr := "select count(order_id) from orders where order_id = ?"
@@ -136,8 +136,8 @@ func InsertOrder(orderid, partyA, partyB, status string) (err error) {
 		return errors.New("order_id already exists.")
 	}
 
-	sqlStr = "insert into orders(order_id,partyA,partyB,status) values(?,?,?,?)"
-	_, err = db.Exec(sqlStr, orderid, partyA, partyB, status)
+	sqlStr = "insert into orders(order_id,partyA,partyB,status,amount) values(?,?,?,?,?)"
+	_, err = db.Exec(sqlStr, orderid, partyA, partyB, status, amount)
 	if err != nil {
 		return err
 	}
@@ -211,4 +211,36 @@ func CheckPassword(username, password string) (err error) {
 	}
 
 	return errors.New("password wrong.")
+}
+
+func ReturnOrders(choice string) ([]MysqlOrder, error) {
+    var orders []MysqlOrder
+    var sqlStr string
+    var args []interface{}
+    
+    if choice == "" {
+        sqlStr = "SELECT order_id, partyA, partyB, status, amount FROM orders"
+    } else {
+        sqlStr = "SELECT order_id, partyA, partyB, status, amount FROM orders WHERE partyA = ? OR partyB = ?"
+        args = append(args, choice, choice)
+    }
+
+    rows, err := db.Query(sqlStr, args...)
+    if err != nil {
+        return nil, fmt.Errorf("query failed: %w", err)
+    }
+    defer rows.Close()
+
+    for rows.Next() {
+        var o MysqlOrder
+        if err := rows.Scan(&o.OrderID, &o.PartyA, &o.PartyB, &o.Status, &o.Amount); err != nil {
+            return nil, fmt.Errorf("scan failed: %w", err)
+        }
+        orders = append(orders, o)
+    }
+
+    if err := rows.Err(); err != nil {
+        return nil, fmt.Errorf("rows iteration error: %w", err)
+    }
+    return orders, nil
 }

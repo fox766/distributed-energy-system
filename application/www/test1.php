@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分布式能源系统</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        :root {
+            --primary: #4361ee;
+            --secondary: #3f37c9;
+            --accent: #4895ef;
+            --success: #4cc9f0;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --danger: #e63946;
+            --border-radius: 12px;
+            --box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            --transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 480px;
+            background: white;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--box-shadow);
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            min-height: 640px;
+        }
+
+        .card-content {
+            transition: var(--transition);
+            position: absolute;
+            width: calc(100% - 60px);
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .card-content.hidden {
+            opacity: 0;
+            transform: translateY(20px);
+            pointer-events: none;
+        }
+
+        .logo {
+            margin-bottom: 20px;
+        }
+
+        .logo i {
+            font-size: 48px;
+            color: var(--primary);
+            background: rgba(67, 97, 238, 0.1);
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            transition: transform 0.5s ease;
+        }
+
+        .logo h1 {
+            font-size: 24px;
+            color: var(--dark);
+            margin-bottom: 5px;
+        }
+
+        .logo p {
+            color: var(--gray);
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--dark);
+            font-size: 14px;
+        }
+
+        .input-with-icon {
+            position: relative;
+        }
+
+        .input-with-icon i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray);
+            font-size: 18px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 14px 20px 14px 50px;
+            border: 2px solid #e1e5eb;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .form-control:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--gray);
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            box-shadow: 0 4px 10px rgba(67, 97, 238, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--gray);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--gray);
+            color: var(--gray);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-outline:hover {
+            background: rgba(108, 117, 125, 0.1);
+        }
+
+        .message {
+            padding: 12px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 14px;
+            display: none;
+        }
+
+        .error-message {
+            background-color: rgba(230, 57, 70, 0.1);
+            color: var(--danger);
+        }
+
+        .success-message {
+            background-color: rgba(76, 201, 240, 0.1);
+            color: var(--success);
+        }
+
+        .user-info {
+            padding: 15px;
+            background-color: rgba(76, 201, 240, 0.1);
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .switch-action {
+            margin-top: 20px;
+            color: var(--gray);
+            font-size: 14px;
+        }
+
+        .switch-action a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+            margin-left: 5px;
+            cursor: pointer;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .pulse {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(67, 97, 238, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(67, 97, 238, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(67, 97, 238, 0);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .login-card {
+                padding: 20px;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+        }
+
+        .power-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(rgba(67, 97, 238, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(67, 97, 238, 0.05) 1px, transparent 1px);
+            background-size: 30px 30px;
+            z-index: -1;
+            opacity: 0.3;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-card">
+        <div class="power-grid"></div>
+
+        <!-- 登录界面 -->
+        <div class="card-content" id="login-section">
+            <div class="logo">
+                <i class="fas fa-bolt"></i>
+                <h1>分布式能源系统</h1>
+                <p>智能能源管理平台</p>
+            </div>
+
+            <div id="error-message" class="message error-message"></div>
+            <div id="success-message" class="message success-message"></div>
+
+            <div class="form-group">
+                <label for="username">用户名</label>
+                <div class="input-with-icon">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="username" class="form-control" placeholder="请输入用户名">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="password">密码</label>
+                <div class="input-with-icon">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="password" class="form-control" placeholder="请输入密码">
+                    <button type="button" class="password-toggle" id="togglePassword">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button type="button" class="btn btn-primary" id="loginBtn">
+                    <i class="fas fa-sign-in-alt"></i> 登录
+                </button>
+                <button type="button" class="btn btn-outline" id="showRegisterBtn">
+                    <i class="fas fa-user-plus"></i> 注册
+                </button>
+            </div>
+
+            <div class="switch-action">
+                没有账户? <a id="showRegisterLink">立即注册</a>
+            </div>
+        </div>
+
+        <!-- 注册界面 -->
+        <div class="card-content hidden" id="register-section">
+            <div class="logo">
+                <i class="fas fa-user-plus pulse"></i>
+                <h1>创建新账户</h1>
+                <p>加入分布式能源系统</p>
+            </div>
+
+            <div id="reg-error-message" class="message error-message"></div>
+            <div id="reg-success-message" class="message success-message"></div>
+
+            <div class="form-group">
+                <label for="reg-username">用户名</label>
+                <div class="input-with-icon">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="reg-username" class="form-control" placeholder="创建用户名">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="reg-password">密码</label>
+                <div class="input-with-icon">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="reg-password" class="form-control" placeholder="设置密码">
+                    <button type="button" class="password-toggle" id="toggleRegPassword">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="confirm-password">确认密码</label>
+                <div class="input-with-icon">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="confirm-password" class="form-control" placeholder="再次输入密码">
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button type="button" class="btn btn-primary" id="registerBtn">
+                    <i class="fas fa-check"></i> 注册
+                </button>
+                <button type="button" class="btn btn-outline" id="backToLoginBtn">
+                    <i class="fas fa-arrow-left"></i> 返回
+                </button>
+            </div>
+
+            <div class="switch-action">
+                已有账户? <a id="showLoginLink">返回登录</a>
+            </div>
+        </div>
+
+        <!-- 用户信息界面 -->
+        <div class="card-content hidden" id="user-section">
+            <div class="logo">
+                <i class="fas fa-user-circle" style="color: #4cc9f0;"></i>
+                <h1>欢迎回来</h1>
+                <p>分布式能源控制中心</p>
+            </div>
+
+            <div class="user-info" id="user-info">
+                <i class="fas fa-user"></i> <strong id="user-name">管理员</strong>
+                <div style="margin-top: 10px;">
+                    <i class="fas fa-id-card"></i> ID: <span id="user-id">DES-001</span>
+                </div>
+                <div style="margin-top: 10px;">
+                    <i class="fas fa-bolt"></i> 当前系统状态: <span style="color: #4cc9f0;">运行中</span>
+                </div>
+            </div>
+
+            <button type="button" class="btn btn-primary" id="dashboardBtn">
+                <i class="fas fa-tachometer-alt"></i> 进入控制面板
+            </button>
+
+            <div class="action-buttons" style="margin-top: 15px;">
+                <button type="button" class="btn btn-outline" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i> 注销
+                </button>
+            </div>
+        </div>
+    </div>
+    <script>
+        // 界面切换函数
+        function switchView(targetId) {
+            // 隐藏所有视图
+            document.querySelectorAll('.card-content').forEach(el => {
+                el.classList.add('hidden');
+            });
+
+            // 显示目标视图
+            const targetView = document.getElementById(targetId);
+            targetView.classList.remove('hidden');
+
+            // 重置表单和消息
+            if (targetId === 'login-section') {
+                document.getElementById('username').value = '';
+                document.getElementById('password').value = '';
+                document.getElementById('error-message').style.display = 'none';
+                document.getElementById('success-message').style.display = 'none';
+            } else if (targetId === 'register-section') {
+                document.getElementById('reg-username').value = '';
+                document.getElementById('reg-password').value = '';
+                document.getElementById('confirm-password').value = '';
+                document.getElementById('reg-error-message').style.display = 'none';
+                document.getElementById('reg-success-message').style.display = 'none';
+            }
+        }
+
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取DOM元素
+            const loginBtn = document.getElementById('loginBtn');
+            const registerBtn = document.getElementById('registerBtn');
+            const logoutBtn = document.getElementById('logoutBtn');
+            const togglePassword = document.getElementById('togglePassword');
+            const toggleRegPassword = document.getElementById('toggleRegPassword');
+            const passwordInput = document.getElementById('password');
+            const regPasswordInput = document.getElementById('reg-password');
+            const errorMessage = document.getElementById('error-message');
+            const successMessage = document.getElementById('success-message');
+            const regErrorMessage = document.getElementById('reg-error-message');
+            const regSuccessMessage = document.getElementById('reg-success-message');
+            const showRegisterBtn = document.getElementById('showRegisterBtn');
+            const showRegisterLink = document.getElementById('showRegisterLink');
+            const backToLoginBtn = document.getElementById('backToLoginBtn');
+            const showLoginLink = document.getElementById('showLoginLink');
+            const dashboardBtn = document.getElementById('dashboardBtn');
+
+            // 密码可见性切换
+            togglePassword.addEventListener('click', function() {
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+            });
+
+            toggleRegPassword.addEventListener('click', function() {
+                const type = regPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                regPasswordInput.setAttribute('type', type);
+                this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+            });
+
+            // 切换到注册界面
+            showRegisterBtn.addEventListener('click', () => switchView('register-section'));
+            showRegisterLink.addEventListener('click', () => switchView('register-section'));
+
+            // 返回到登录界面
+            backToLoginBtn.addEventListener('click', () => switchView('login-section'));
+            showLoginLink.addEventListener('click', () => switchView('login-section'));
+
+            // 登录功能
+            loginBtn.addEventListener('click', function() {
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+
+                if (!username || !password) {
+                    showError('请输入用户名和密码', errorMessage);
+                    return;
+                }
+
+                // 显示加载效果
+                loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 登录中...';
+                loginBtn.disabled = true;
+
+                // 模拟API调用延迟
+                setTimeout(() => {
+                    // 验证
+                    url = 'http://localhos:8080/login/' + username + '/' + password
+                    exec('curl ' + url, (error, stdout, stderr) => {
+                        if (error) {
+                            console.error(`执行错误: ${error.message}`);
+                            return;
+                        }
+                        console.log(`stdout: ${stdout}`);
+                        console.error(`stderr: ${stderr}`);
+                    });
+
+                    if (data.error) {
+                        // 登录失败
+                        showError('用户名或密码不正确', errorMessage);
+                    } else {
+                        // 登录成功
+                        showSuccess('登录成功！欢迎回来', successMessage);
+
+                        // 更新用户信息
+                        document.getElementById('user-name').textContent = user.name;
+                        document.getElementById('user-id').textContent = user.id;
+
+                        // 切换到用户界面
+                        setTimeout(() => switchView('user-section'), 1000);
+                    }
+
+                    // 重置按钮
+                    loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> 登录';
+                    loginBtn.disabled = false;
+                }, 1500);
+            });
+
+            // 注册功能
+            registerBtn.addEventListener('click', function() {
+                const username = document.getElementById('reg-username').value;
+                const password = document.getElementById('reg-password').value;
+                const confirmPassword = document.getElementById('confirm-password').value;
+
+                if (!username || !password) {
+                    showError('请输入用户名和密码', regErrorMessage);
+                    return;
+                }
+
+                if (password !== confirmPassword) {
+                    showError('两次输入的密码不一致', regErrorMessage);
+                    return;
+                }
+
+                // 显示加载效果
+                registerBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 注册中...';
+                registerBtn.disabled = true;
+
+                // 模拟API调用延迟
+                setTimeout(() => {
+                    fetch(`http://localhost:8080/register/${username}/${password}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log(data); // 处理返回的数据
+                            console.log(response)
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                        });
+
+                    if (true) {
+                        showError('该用户名已被使用', regErrorMessage);
+                    } else {
+                        showSuccess('注册成功！', regSuccessMessage);
+
+                        // 自动填充登录表单
+                        document.getElementById('username').value = username;
+                        document.getElementById('password').value = '';
+
+                        // 切换到登录界面
+                        setTimeout(() => switchView('login-section'), 1500);
+                    }
+
+                    // 重置按钮
+                    registerBtn.innerHTML = '<i class="fas fa-check"></i> 注册';
+                    registerBtn.disabled = false;
+                }, 1500);
+            });
+
+            // 注销功能
+            logoutBtn.addEventListener('click', function() {
+                // 显示加载效果
+                logoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 注销中...';
+                logoutBtn.disabled = true;
+
+                // 模拟注销延迟
+                setTimeout(() => {
+                    showSuccess('您已成功注销', successMessage);
+
+                    // 切换到登录界面
+                    setTimeout(() => {
+                        switchView('login-section');
+                        logoutBtn.innerHTML = '<i class="fas fa-sign-out-alt"></i> 注销';
+                        logoutBtn.disabled = false;
+                    }, 1000);
+                }, 1000);
+            });
+
+            // 控制面板
+            dashboardBtn.addEventListener('click', function() {
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 进入中...';
+                setTimeout(() => {
+                    alert('欢迎进入分布式能源控制面板！');
+                    this.innerHTML = '<i class="fas fa-tachometer-alt"></i> 进入控制面板';
+                }, 1500);
+            });
+
+            // 显示错误消息
+            function showError(message, element) {
+                element.textContent = message;
+                element.style.display = 'block';
+
+                // 3秒后自动隐藏
+                setTimeout(() => {
+                    element.style.display = 'none';
+                }, 3000);
+            }
+
+            // 显示成功消息
+            function showSuccess(message, element) {
+                element.textContent = message;
+                element.style.display = 'block';
+
+                // 3秒后自动隐藏
+                setTimeout(() => {
+                    element.style.display = 'none';
+                }, 3000);
+            }
+        });
+    </script>
+</body>
+
+</html>

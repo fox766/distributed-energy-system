@@ -90,19 +90,19 @@ func Login (c *gin.Context) {
 
 	userid, err = mysql.GetUserID(username)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"message": "username not exists",})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "username not exists",})
 		return
 	}
 
 	err = mysql.CheckPassword(username, password)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"message": "wrong password.",})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "wrong password.",})
 		return
 	}
 
 	CURRENT_USER, err = jwt.GenToken(userid)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"message": "failed to generate token.",})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "failed to generate token.",})
 		return
 	}
 
@@ -112,7 +112,7 @@ func Login (c *gin.Context) {
 
 func Logout(c *gin.Context) {
 	if CURRENT_USER == "" {
-		c.JSON(http.StatusOK, gin.H{"message": "NO user logged in, no need to log out.",})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "NO user logged in, no need to log out.",})
 		return
 	}
 	CURRENT_USER = ""

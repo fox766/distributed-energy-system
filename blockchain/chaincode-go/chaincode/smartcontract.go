@@ -172,14 +172,14 @@ func (s *SmartContract) RegisterUser(ctx contractapi.TransactionContextInterface
 	return nil
 }
 
-func (s *SmartContract) RegisterDevice(ctx contractapi.TransactionContextInterface) error {
-	return nil
-}
+// func (s *SmartContract) RegisterDevice(ctx contractapi.TransactionContextInterface) error {
+// 	return nil
+// }
 
 
-func (s *SmartContract) TransferDevice(ctx contractapi.TransactionContextInterface, devicename, newowner string) error {
-	return nil
-}
+// func (s *SmartContract) TransferDevice(ctx contractapi.TransactionContextInterface, devicename, newowner string) error {
+// 	return nil
+// }
 
 func (s *SmartContract) CreateOrder(ctx contractapi.TransactionContextInterface, id, partyA, partyB, status string, 
 	createdtime time.Time, amount, price, fee float64) error {

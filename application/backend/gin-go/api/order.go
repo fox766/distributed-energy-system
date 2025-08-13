@@ -95,7 +95,8 @@ func CreateOrder(c *gin.Context) {
 		return
 	}
 
-	err = mysql.InsertOrder(orderid, partyA, partyB, status)
+	amountValue, _ := strconv.ParseFloat(amount, 64)
+	err = mysql.InsertOrder(orderid, partyA, partyB, status, amountValue)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to insert order into database: " + err.Error()})
 		OrderNotUsed()
@@ -156,4 +157,39 @@ func SettleOrder(c *gin.Context) {
 
 	c.JSON(http.StatusOK, "Successfully settle order.")
 	c.String(200, "\n")
+}
+
+func ListOrders(c *gin.Context) {
+	var orders []mysql.MysqlOrder
+	var err error
+	orders, err = mysql.ReturnOrders("")
+	if (err != nil) {
+		c.JSON(http.StatusOK, "Failed to get orders")
+	}
+	c.JSON(http.StatusOK, orders)
+}
+
+func ListUserOrders(c *gin.Context) {
+	var orders []mysql.MysqlOrder
+	var err error
+	if !UserLogged(){
+		c.JSON(http.StatusOK, gin.H{"message": "NO user logged in, cannot create a order",})
+		return 
+	}
+	
+	var userinfo *jwt.LoginUser
+	userinfo, err = jwt.ParseToken(CURRENT_USER)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "Failed to parse token" + CURRENT_USER,})
+		return
+	}
+
+
+	userid := userinfo.UserID
+
+	orders, err = mysql.ReturnOrders(userid)
+	if (err != nil) {
+		c.JSON(http.StatusOK, "Failed to get orders")
+	}
+	c.JSON(http.StatusOK, orders)
 }
