@@ -1,0 +1,192 @@
+<script>
+    // ... 其他代码保持不变 ...
+  
+    // 将弹窗相关变量提升到全局作用域
+    const modal = document.getElementById("orderDetailModal");
+    const closeBtn = document.querySelector(".close");
+    const closeModalBtn = document.getElementById("closeModalBtn");
+    const modalText = document.getElementById("modalText");
+  
+    // 初始化页面
+    document.addEventListener("DOMContentLoaded", function () {
+      // 绑定事件
+      bindEvents();
+      updatecardData();
+  
+      // 初始化图表
+      initCharts();
+  
+      // 初始化订单金额计算
+      updateOrderDetails();
+      
+      // 绑定弹窗关闭事件
+      closeBtn.addEventListener("click", closeModal);
+      closeModalBtn.addEventListener("click", closeModal);
+      
+      // 添加事件委托处理仪表盘中的查看按钮
+      document.getElementById("orders-table").addEventListener("click", function(event) {
+        if (event.target.closest("button[data-order-id]")) {
+          const button = event.target.closest("button[data-order-id]");
+          const orderId = button.getAttribute("data-order-id");
+          showOrderDetail(orderId);
+        }
+      });
+    });
+  
+    // 绑定事件
+    function bindEvents() {
+      // 导航标签点击
+      document.querySelectorAll(".nav-tab").forEach((tab) => {
+        tab.addEventListener("click", function () {
+          const tabId = this.getAttribute("data-tab");
+          showTab(tabId);
+  
+          // 更新活动状态
+          document.querySelectorAll(".nav-tab").forEach((el) => {
+            el.classList.remove("active");
+          });
+          this.classList.add("active");
+        });
+      });
+  
+      // ... 其他事件绑定保持不变 ...
+  
+      // 仪表盘energy-price-card
+      document
+        .getElementById("energy-price-card")
+        .addEventListener("click", () => {
+          updatecardData(); // 点击更新当前能源价格
+        });
+      // ... 其他卡片点击事件 ...
+    }
+  
+    // 显示订单详情
+    function showOrderDetail(orderId) {
+      // 显示模态框和加载状态
+      modal.style.display = "flex";
+      setTimeout(() => {
+        modal.classList.add("active");
+      }, 10);
+      
+      modalText.innerHTML = `
+        <div class="loading-spinner">
+          <div class="spinner"></div>
+          <p style="margin-top: 15px; color: var(--gray);">正在加载订单数据...</p>
+        </div>
+      `;
+      
+      // 模拟API请求延迟
+      setTimeout(() => {
+        // 模拟API响应数据
+        const mockData = {
+          id: orderId,
+          partyA: `energy_user_${Math.floor(Math.random() * 20)}`,
+          partyB: `energy_user_${Math.floor(Math.random() * 20)}`,
+          amount: Math.floor(Math.random() * 200) + 50,
+          status: ["已创建", "已匹配", "已完成"][Math.floor(Math.random() * 3)],
+          price: (Math.random() * 0.5 + 1.0).toFixed(2),
+          createdat: new Date().toLocaleString()
+        };
+        
+        // 更新弹窗内容
+        updateModalContent(mockData);
+      }, 1200);
+    }
+  
+    // 更新模态框内容
+    function updateModalContent(data) {
+      const statusClass = {
+        "已创建": "status-created",
+        "已匹配": "status-matched",
+        "已完成": "status-finished"
+      }[data.status] || "status-created";
+      
+      modalText.innerHTML = `
+        <div>
+          <strong>订单ID:</strong> ${data.id}
+        </div>
+        <div>
+          <strong>卖方:</strong> ${data.partyA}
+        </div>
+        <div>
+          <strong>买方:</strong> ${data.partyB || "等待匹配中..."}
+        </div>
+        <div>
+          <strong>数量:</strong> ${data.amount} kWh
+        </div>
+        <div>
+          <strong>状态:</strong> <span class="status-badge ${statusClass}">${data.status}</span>
+        </div>
+        <div>
+          <strong>单价:</strong> ¥${data.price}/kWh
+        </div>
+        <div>
+          <strong>创建时间:</strong> ${data.createdat}
+        </div>
+        <div>
+          <strong>总金额:</strong> ¥${(data.amount * data.price).toFixed(2)}
+        </div>
+      `;
+    }
+  
+    // 关闭模态框
+    function closeModal() {
+      modal.classList.remove("active");
+      setTimeout(() => {
+        modal.style.display = "none";
+      }, 300);
+    }
+  
+    // 更新仪表盘数据
+    function updatecardData() {
+      // ... 其他代码保持不变 ...
+  
+      fetch(`${API_BASE_URL}/listneworders`)
+        .then((response) => response.json())
+        .then((data) => {
+          const ordersTable = document.getElementById("orders-table");
+          // 清空表格
+          ordersTable.innerHTML = "";
+  
+          // 遍历数据并动态生成表格行
+          data.forEach((order) => {
+            const row = document.createElement("tr");
+  
+            // 创建每一列的数据
+            const orderIdCell = document.createElement("td");
+            orderIdCell.textContent = order.orderid;
+  
+            const quantityCell = document.createElement("td");
+            quantityCell.textContent = order.amount;
+  
+            const statusCell = document.createElement("td");
+            const statusBadge = document.createElement("span");
+            statusBadge.classList.add(
+              "status-badge",
+              `status-${order.status}`
+            );
+            statusBadge.textContent = order.status;
+            statusCell.appendChild(statusBadge);
+  
+            const actionCell = document.createElement("td");
+            const viewButton = document.createElement("button");
+            viewButton.classList.add("btn", "btn-sm", "btn-outline-primary");
+            viewButton.textContent = "查看";
+            viewButton.setAttribute("data-order-id", order.orderid); // 确保设置正确的属性
+            actionCell.appendChild(viewButton);
+  
+            // 将所有列添加到行
+            row.appendChild(orderIdCell);
+            row.appendChild(quantityCell);
+            row.appendChild(statusCell);
+            row.appendChild(actionCell);
+  
+            // 将行添加到表格的tbody中
+            ordersTable.appendChild(row);
+          });
+        })
+        .catch((error) => console.error("获取订单数据失败:", error));
+    }
+  
+    // ... 其他函数保持不变 ...
+  </script>

@@ -193,3 +193,19 @@ func ListUserOrders(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, orders)
 }
+
+func ListNewOrders(c *gin.Context) {
+	var orders []mysql.MysqlOrder
+	var err error
+	orders, err = mysql.ReturnOrders("")
+	if (err != nil) {
+		c.JSON(http.StatusOK, "Failed to get orders")
+	}
+	n := len(orders)
+    if n <= 5 {
+        c.JSON(http.StatusOK, orders)
+		return
+	}
+    c.JSON(http.StatusOK, orders[n-5:])
+}
+	

@@ -37,3 +37,9 @@ type EnergyStatus struct {
 	EnergyPrice  float64 `json:"energyprice"` 
 	Fee          float64 `json:"fee"` 
 }
+
+type SystemStatus struct {
+	EnergyPrice float64   `json:"energyprice"`
+	UserNum     int       `json:"usernum"`
+	OrderNum    int       `json:"ordernum"`
+}

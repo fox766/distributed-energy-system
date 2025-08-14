@@ -26,5 +26,13 @@ func Init(c *gin.Context) {
 	c.String(http.StatusOK, "\n")
 }
 
+func ReturnSystemStatus(c *gin.Context) {
+	var systemvar SystemStatus
+	systemvar.EnergyPrice = 1.0
+	systemvar.UserNum = 2
+	systemvar.OrderNum = 1
+	c.JSON(http.StatusOK, systemvar)
+}
+
 
 
