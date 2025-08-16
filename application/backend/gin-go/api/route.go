@@ -27,7 +27,7 @@ func RegisterAssetRoutes(r *gin.Engine) {
 	r.GET("/createorder/:amount", CreateOrder)
 	r.GET("/matchorder/:orderid", MatchOrder)
 	r.GET("/settleorder/:orderid", SettleOrder)
-	r.GET("/getallorders", ListOrders)
+	r.GET("/getallorders/:status/:type", ListOrders)
 	r.GET("/getuserorders", ListUserOrders)
 	r.GET("/getsystemstatus", ReturnSystemStatus)
 	r.GET("/listneworders", ListNewOrders)

@@ -175,6 +175,11 @@
         outline: none;
       }
 
+      .form-control:disabled {
+        background-color: #f8f9fa;
+        cursor: not-allowed;
+      }
+
       .form-control:focus {
         border-color: var(--accent);
         box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
@@ -498,6 +503,129 @@
           transform: translateY(0);
         }
       }
+
+      /* 新增样式：创建订单界面优化 */
+      .create-order-section .card {
+        background: linear-gradient(135deg, #ffffff 0%, #f0f5ff 100%);
+        border-left: 4px solid var(--energy-blue);
+      }
+
+      .form-range {
+        width: 100%;
+        height: 10px;
+        border-radius: 5px;
+        background: #e1e5eb;
+        outline: none;
+        transition: var(--transition);
+      }
+
+      .form-range:focus {
+        box-shadow: 0 0 0 0.25rem rgba(67, 97, 238, 0.25);
+      }
+
+      .form-range::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--primary);
+        cursor: pointer;
+        transition: var(--transition);
+      }
+
+      .form-range::-webkit-slider-thumb:hover {
+        transform: scale(1.2);
+        box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.2);
+      }
+
+      .input-group {
+        display: flex;
+        margin-top: 10px;
+      }
+
+      .input-group-text {
+        display: flex;
+        align-items: center;
+        padding: 0.375rem 0.75rem;
+        font-size: 1rem;
+        font-weight: 400;
+        line-height: 1.5;
+        color: #495057;
+        text-align: center;
+        white-space: nowrap;
+        background-color: #e9ecef;
+        border: 2px solid #e1e5eb;
+        border-radius: 8px;
+        border-left: none;
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+      }
+
+      .input-group input {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+        border-right: none;
+      }
+
+      .order-summary {
+        background: linear-gradient(135deg, #ffffff 0%, #f9f9f9 100%);
+        border-radius: var(--border-radius);
+        padding: 20px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+      }
+
+      .order-summary-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        padding-bottom: 12px;
+        border-bottom: 1px dashed #e1e5eb;
+      }
+
+      .order-summary-item:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+      }
+
+      .order-summary-total {
+        font-weight: 600;
+        font-size: 1.1rem;
+      }
+
+      .order-profit {
+        font-weight: 700;
+        font-size: 1.4rem;
+        color: var(--energy-green);
+      }
+
+      .order-type-indicator {
+        display: flex;
+        align-items: center;
+        padding: 15px;
+        background: rgba(67, 97, 238, 0.1);
+        border-radius: var(--border-radius);
+        margin-bottom: 20px;
+      }
+
+      .order-type-indicator i {
+        font-size: 1.5rem;
+        color: var(--primary);
+        margin-right: 10px;
+      }
+
+      .price-label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 5px;
+      }
+
+      .price-hint {
+        font-size: 0.85rem;
+        color: var(--gray);
+        font-style: italic;
+      }
     </style>
   </head>
   <body>
@@ -576,68 +704,7 @@
                     <th>操作</th>
                   </tr>
                 </thead>
-                <tbody id="orders-table">
-                  <tr>
-                    <td>energy_order_102</td>
-                    <td>150</td>
-                    <td>
-                      <span class="status-badge status-created">已创建</span>
-                    </td>
-                    <td>
-                      <button
-                        class="btn btn-sm btn-outline-primary"
-                        data-order-id="energy_order_102"
-                      >
-                        查看
-                      </button>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>energy_order_101</td>
-                    <td>80</td>
-                    <td>
-                      <span class="status-badge status-matched">已匹配</span>
-                    </td>
-                    <td>
-                      <button
-                        class="btn btn-sm btn-outline-primary"
-                        data-order-id="energy_order_101"
-                      >
-                        查看
-                      </button>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>energy_order_100</td>
-                    <td>200</td>
-                    <td>
-                      <span class="status-badge status-created">已创建</span>
-                    </td>
-                    <td>
-                      <button
-                        class="btn btn-sm btn-outline-primary"
-                        data-order-id="energy_order_100"
-                      >
-                        查看
-                      </button>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>energy_order_99</td>
-                    <td>120</td>
-                    <td>
-                      <span class="status-badge status-finished">已完成</span>
-                    </td>
-                    <td>
-                      <button
-                        class="btn btn-sm btn-outline-primary"
-                        data-order-id="energy_order_99"
-                      >
-                        查看
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
+                <tbody id="orders-table"></tbody>
               </table>
             </div>
           </div>
@@ -659,6 +726,8 @@
             </div>
           </div>
           <div class="modal-footer">
+            <!-- 按钮将根据订单状态动态添加 -->
+            <div id="actionButtons"></div>
             <button class="modal-btn" id="closeModalBtn">关闭</button>
           </div>
         </div>
@@ -677,7 +746,7 @@
               <div class="col-md-4 mb-3">
                 <label class="form-label">订单状态</label>
                 <select class="form-control" id="order-status-filter">
-                  <option value="">全部状态</option>
+                  <option value="ALL">全部状态</option>
                   <option value="CREATED">已创建</option>
                   <option value="MATCHED">已匹配</option>
                   <option value="FINISHED">已完成</option>
@@ -686,9 +755,8 @@
               <div class="col-md-4 mb-3">
                 <label class="form-label">订单类型</label>
                 <select class="form-control" id="order-type-filter">
-                  <option value="">全部类型</option>
-                  <option value="sell">出售订单</option>
-                  <option value="buy">购买订单</option>
+                  <option value="ALL">全部类型</option>
+                  <option value="MINE">我的订单</option>
                 </select>
               </div>
               <div class="col-md-4 mb-3 d-flex align-items-end">
@@ -718,93 +786,12 @@
                 <thead>
                   <tr>
                     <th>订单ID</th>
-                    <th>卖方</th>
-                    <th>买方</th>
                     <th>数量 (kWh)</th>
-                    <th>价格</th>
                     <th>状态</th>
                     <th>创建时间</th>
-                    <th>操作</th>
                   </tr>
                 </thead>
-                <tbody id="all-orders-table">
-                  <tr>
-                    <td>energy_order_102</td>
-                    <td>energy_user_15</td>
-                    <td>-</td>
-                    <td>150</td>
-                    <td>¥1.25</td>
-                    <td>
-                      <span class="status-badge status-created">已创建</span>
-                    </td>
-                    <td>2023-10-16 10:30</td>
-                    <td>
-                      <button
-                        class="btn btn-sm btn-outline-primary"
-                        data-order-id="energy_order_102"
-                      >
-                        查看
-                      </button>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>energy_order_101</td>
-                    <td>energy_user_12</td>
-                    <td>energy_user_08</td>
-                    <td>80</td>
-                    <td>¥1.20</td>
-                    <td>
-                      <span class="status-badge status-matched">已匹配</span>
-                    </td>
-                    <td>2023-10-15 15:45</td>
-                    <td>
-                      <button
-                        class="btn btn-sm btn-outline-primary"
-                        data-order-id="energy_order_101"
-                      >
-                        查看
-                      </button>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>energy_order_100</td>
-                    <td>energy_user_15</td>
-                    <td>-</td>
-                    <td>200</td>
-                    <td>¥1.30</td>
-                    <td>
-                      <span class="status-badge status-created">已创建</span>
-                    </td>
-                    <td>2023-10-15 09:30</td>
-                    <td>
-                      <button
-                        class="btn btn-sm btn-outline-primary"
-                        data-order-id="energy_order_100"
-                      >
-                        查看
-                      </button>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>energy_order_99</td>
-                    <td>energy_user_10</td>
-                    <td>energy_user_05</td>
-                    <td>120</td>
-                    <td>¥1.18</td>
-                    <td>
-                      <span class="status-badge status-finished">已完成</span>
-                    </td>
-                    <td>2023-10-14 16:20</td>
-                    <td>
-                      <button
-                        class="btn btn-sm btn-outline-primary"
-                        data-order-id="energy_order_99"
-                      >
-                        查看
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
+                <tbody id="all-orders-table"></tbody>
               </table>
             </div>
           </div>
@@ -812,7 +799,7 @@
       </div>
 
       <!-- 创建订单界面 -->
-      <div class="tab-content" id="create-order-section">
+      <div class="tab-content create-order-section" id="create-order-section">
         <h2 class="section-title">
           <i class="fas fa-plus-circle"></i> 创建新订单
         </h2>
@@ -824,23 +811,12 @@
           <div class="card-body">
             <div class="row">
               <div class="col-md-6">
-                <div class="mb-4">
-                  <label class="form-label">交易类型</label>
-                  <div class="d-flex gap-2">
-                    <button
-                      class="btn btn-outline-primary flex-grow-1 active"
-                      type="button"
-                      data-type="sell"
-                    >
-                      <i class="fas fa-arrow-up me-2"></i>出售能源
-                    </button>
-                    <button
-                      class="btn btn-outline-success flex-grow-1"
-                      type="button"
-                      data-type="buy"
-                    >
-                      <i class="fas fa-arrow-down me-2"></i>购买能源
-                    </button>
+                <!-- 交易类型指示器（只显示出售能源） -->
+                <div class="order-type-indicator">
+                  <i class="fas fa-solar-panel"></i>
+                  <div>
+                    <h4>出售能源</h4>
+                    <p class="mb-0">您正在创建出售能源的订单</p>
                   </div>
                 </div>
 
@@ -852,7 +828,7 @@
                     type="range"
                     class="form-range"
                     min="1"
-                    max="1000"
+                    max="300"
                     id="order-amount-range"
                     value="100"
                   />
@@ -863,16 +839,21 @@
                       id="order-amount"
                       value="100"
                       min="1"
-                      max="1000"
+                      max="300"
                     />
                     <span class="input-group-text">kWh</span>
                   </div>
                 </div>
 
                 <div class="mb-3">
-                  <label for="order-price" class="form-label"
-                    >能源单价 (¥/kWh)</label
-                  >
+                  <div class="price-label">
+                    <label for="order-price" class="form-label"
+                      >能源单价 (¥/kWh)</label
+                    >
+                    <span class="price-hint" id="market-price-indicator"
+                      >市场价: ¥1.25</span
+                    >
+                  </div>
                   <div class="input-group">
                     <span class="input-group-text">¥</span>
                     <input
@@ -882,6 +863,7 @@
                       value="1.25"
                       min="0.1"
                       step="0.01"
+                      disabled
                     />
                   </div>
                 </div>
@@ -890,22 +872,22 @@
               <div class="col-md-6">
                 <div class="mb-4">
                   <label class="form-label">订单详情</label>
-                  <div class="card order-card p-3">
-                    <div class="d-flex justify-content-between mb-2">
+                  <div class="order-summary">
+                    <div class="order-summary-item">
                       <span>能源单价:</span>
                       <span id="order-price-display">¥1.25</span>
                     </div>
-                    <div class="d-flex justify-content-between mb-2">
+                    <div class="order-summary-item">
                       <span>交易费用 (1%):</span>
                       <span id="order-fee">¥1.25</span>
                     </div>
-                    <div class="d-flex justify-content-between mb-2">
+                    <div class="order-summary-item">
                       <span>总金额:</span>
                       <span id="order-total">¥126.25</span>
                     </div>
-                    <div class="d-flex justify-content-between mt-3">
-                      <span>预计收益/支出:</span>
-                      <span class="fs-5 fw-bold" id="order-profit"
+                    <div class="order-summary-item order-summary-total">
+                      <span>预计收益:</span>
+                      <span class="order-profit" id="order-profit"
                         >¥126.25</span
                       >
                     </div>
@@ -1028,104 +1010,25 @@
       </div>
     </div>
 
-    <!-- 订单详情模态框
-    <div class="modal" id="order-detail-modal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">订单详情</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="card mb-3">
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label class="form-label">订单ID</label>
-                                        <div id="modal-order-id">energy_order_102</div>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label">卖方</label>
-                                        <div id="modal-party-a">energy_user_15</div>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label">创建时间</label>
-                                        <div id="modal-created-at">2023-10-16 10:30:00</div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label class="form-label">订单状态</label>
-                                        <div>
-                                            <span class="status-badge status-created">已创建</span>
-                                        </div>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label">买方</label>
-                                        <div id="modal-party-b">-</div>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label">交易金额</label>
-                                        <div id="modal-total-amount">¥187.50</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="row mt-3">
-                                <div class="col-md-4">
-                                    <div class="card p-2 text-center">
-                                        <div class="text-muted">能源数量</div>
-                                        <div class="fs-5 fw-bold" id="modal-energy-amount">150 kWh</div>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="card p-2 text-center">
-                                        <div class="text-muted">能源单价</div>
-                                        <div class="fs-5 fw-bold" id="modal-energy-price">¥1.25</div>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="card p-2 text-center">
-                                        <div class="text-muted">交易费用</div>
-                                        <div class="fs-5 fw-bold" id="modal-transaction-fee">¥1.88</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="d-flex justify-content-between" id="order-actions">
-                        <button class="btn btn-success" id="match-order-btn">
-                            <i class="fas fa-handshake me-2"></i>匹配订单
-                        </button>
-                        <button class="btn btn-primary" id="settle-order-btn">
-                            <i class="fas fa-check-circle me-2"></i>结算订单
-                        </button>
-                        <button class="btn btn-danger" id="cancel-order-btn">
-                            <i class="fas fa-times-circle me-2"></i>取消订单
-                        </button>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
-                </div>
-            </div>
-        </div>
-    </div> -->
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <script>
       const API_BASE_URL = "http://localhost:8080";
+
+      const modal = document.getElementById("orderDetailModal");
+      const closeBtn = document.querySelector(".close");
+      const closeModalBtn = document.getElementById("closeModalBtn");
+      const modalText = document.getElementById("modalText");
 
       // 初始化页面
       document.addEventListener("DOMContentLoaded", function () {
         // 绑定事件
         bindEvents();
+
         updatecardData();
+        loadAllOrders();
 
         // 初始化图表
         initCharts();
@@ -1136,6 +1039,9 @@
 
       // 绑定事件
       function bindEvents() {
+        // 绑定弹窗关闭事件
+        closeBtn.addEventListener("click", closeModal);
+        closeModalBtn.addEventListener("click", closeModal);
         // 导航标签点击
         document.querySelectorAll(".nav-tab").forEach((tab) => {
           tab.addEventListener("click", function () {
@@ -1168,24 +1074,6 @@
           updateOrderDetails();
         });
 
-        // 能源价格输入
-        document
-          .getElementById("order-price")
-          .addEventListener("input", function () {
-            updateOrderDetails();
-          });
-
-        // 交易类型切换
-        document.querySelectorAll("[data-type]").forEach((btn) => {
-          btn.addEventListener("click", function () {
-            document.querySelectorAll("[data-type]").forEach((b) => {
-              b.classList.remove("active");
-            });
-            this.classList.add("active");
-            updateOrderDetails();
-          });
-        });
-
         // 创建订单按钮
         document
           .getElementById("create-order-btn")
@@ -1214,29 +1102,6 @@
           });
         });
 
-        // // 匹配订单按钮
-        // document.getElementById('match-order-btn').addEventListener('click', function() {
-        //     alert('订单匹配成功！');
-        //     const modal = bootstrap.Modal.getInstance(document.getElementById('order-detail-modal'));
-        //     modal.hide();
-        // });
-
-        // // 结算订单按钮
-        // document.getElementById('settle-order-btn').addEventListener('click', function() {
-        //     alert('订单结算成功！');
-        //     const modal = bootstrap.Modal.getInstance(document.getElementById('order-detail-modal'));
-        //     modal.hide();
-        // });
-
-        // // 取消订单按钮
-        // document.getElementById('cancel-order-btn').addEventListener('click', function() {
-        //     if (confirm('确定要取消此订单吗？')) {
-        //         alert('订单已取消！');
-        //         const modal = bootstrap.Modal.getInstance(document.getElementById('order-detail-modal'));
-        //         modal.hide();
-        //     }
-        // });
-
         // 仪表盘energy-price-card
         document
           .getElementById("energy-price-card")
@@ -1256,167 +1121,194 @@
             updatecardData(); // 点击更新当前能源价格
           });
 
-        // 仪表盘订单查看按钮
-        // 获取弹窗元素
-        // var modal = document.getElementById("myModal");
-        // var span = document.getElementsByClassName("close")[0];
-        // document
-        //   .querySelectorAll("button[data-order-id]")
-        //   .forEach(function (button) {
-        //     button.addEventListener("click", function () {
-        //     var orderid = this.getAttribute("data-order-id");
-
-        //       // 向后端发起请求，获取订单详情
-        //     //   axios
-        //     //     .get(`${API_BASE_URL}/getorder/${orderId}`)
-        //     //     .then(function (response) {
-        //     //       // 后端返回的数据
-        //     //       var data = response.data;
-        //     fetch(`${API_BASE_URL}/getorder/${orderid}`)
-        //         .then((response) => response.json())
-        //         .then((data) => {
-
-        //           // 更新弹窗内容
-        //           document.getElementById("modalText").innerHTML = `
-        //                 <strong>订单ID:</strong> ${data.id}<br>
-        //                 <strong>卖方:</strong> ${data.partyA}<br>
-        //                 <strong>卖方:</strong> ${data.partyB}<br>
-        //                 <strong>数量:</strong> ${data.amount} kWh<br>
-        //                 <strong>状态:</strong> ${data.status}<br>
-        //                 <strong>单价:</strong> ¥${data.price}<br>
-        //                 <strong>创建时间:</strong> ${data.createdat}
-        //             `;
-
-        //           // 打开弹窗
-        //           modal.style.display = "flex";
-        //         })
-        //         .catch(function (error) {
-        //           document.getElementById("modalText").innerText =
-        //             "请求失败，请稍后再试。";
-        //           modal.style.display = "flex";
-        //         });
-        //     });
-        //   });
-
-        // // 点击关闭按钮
-        // span.onclick = function () {
-        //   modal.style.display = "none";
-        // };
-
-        // // 点击弹窗外部区域关闭弹窗
-        // window.onclick = function (event) {
-        //   if (event.target == modal) {
-        //     modal.style.display = "none";
-        //   }
-        // };
-        const modal = document.getElementById("orderDetailModal");
-        const closeBtn = document.querySelector(".close");
-        const closeModalBtn = document.getElementById("closeModalBtn");
-        const modalText = document.getElementById("modalText");
-
-        // 模拟API基础URL
-        const API_BASE_URL = "https://api.example.com";
-
-        // 绑定事件
-        document.addEventListener("DOMContentLoaded", function () {
-          // 为所有查看按钮绑定事件
-          document
-            .querySelectorAll("button[data-order-id]")
-            .forEach((button) => {
-              button.addEventListener("click", function () {
-                const orderId = this.getAttribute("data-order-id");
-                showOrderDetail(orderId);
-              });
-            });
-
-          // 关闭弹窗事件
-          closeBtn.addEventListener("click", closeModal);
-          closeModalBtn.addEventListener("click", closeModal);
-
-          // 点击背景关闭弹窗
-          window.addEventListener("click", function (event) {
-            if (event.target === modal) {
-              closeModal();
-            }
-          });
-
-          // 键盘ESC键关闭弹窗
-          document.addEventListener("keydown", function (event) {
-            if (event.key === "Escape" && modal.style.display === "flex") {
-              closeModal();
-            }
+        document.querySelectorAll("[data-order-id]").forEach((btn) => {
+          btn.addEventListener("click", function () {
+            const orderId = this.getAttribute("data-order-id");
+            showOrderDetail(orderId);
           });
         });
       }
 
-      //
-      // 显示订单详情
+      // 更新 showOrderDetail 函数，正确使用 API 数据
       function showOrderDetail(orderId) {
         // 显示模态框和加载状态
         modal.style.display = "flex";
         setTimeout(() => {
           modal.classList.add("active");
         }, 10);
-        
+
         modalText.innerHTML = `
-          <div class="loading-spinner">
-            <div class="spinner"></div>
-            <p style="margin-top: 15px; color: var(--gray);">正在加载订单数据...</p>
-          </div>
-        `;
-        
-        // 模拟API请求延迟
-        setTimeout(() => {
-          // 模拟API响应数据
-          const mockData = {
-            id: orderId,
-            partyA: `energy_user_${Math.floor(Math.random() * 20)}`,
-            partyB: `energy_user_${Math.floor(Math.random() * 20)}`,
-            amount: Math.floor(Math.random() * 200) + 50,
-            status: ["已创建", "已匹配", "已完成"][Math.floor(Math.random() * 3)],
-            price: (Math.random() * 0.5 + 1.0).toFixed(2),
-            createdat: new Date().toLocaleString()
-          };
-          
-          // 更新弹窗内容
-          updateModalContent(mockData);
-        }, 1200);
+      <div class="loading-spinner">
+        <div class="spinner"></div>
+        <p style="margin-top: 15px; color: var(--gray);">正在加载订单数据...</p>
+      </div>
+    `;
+
+        // 使用真实 API 数据
+        fetch(`${API_BASE_URL}/getorder/${orderId}`)
+          .then((response) => response.json())
+          .then((data) => {
+            // 转换状态为中文
+            const statusMap = {
+              CREATED: "已创建",
+              MATCHED: "已匹配",
+              FINISHED: "已完成",
+            };
+
+            const orderData = {
+              id: data.id,
+              partyA: data.partyA,
+              partyB: data.partyB || "等待匹配中...",
+              amount: data.amount,
+              status: statusMap[data.status] || data.status,
+              price: data.price,
+              createdat: data.createdAt,
+            };
+
+            updateModalContent(orderData);
+          })
+          .catch(function (error) {
+            modalText.innerHTML = `<div class="error-message">请求失败，请稍后再试。</div>`;
+            console.error("获取订单详情失败:", error);
+          });
       }
 
-      // 更新模态框内容
+      // 更新 updateModalContent 函数，添加按钮
       function updateModalContent(data) {
-        const statusClass = {
-          "已创建": "status-created",
-          "已匹配": "status-matched",
-          "已完成": "status-finished"
-        }[data.status] || "status-created";
-        
+        const statusClass =
+          {
+            已创建: "status-created",
+            已匹配: "status-matched",
+            已完成: "status-finished",
+          }[data.status] || "status-created";
+
         modalText.innerHTML = `
-          <div>
-            <strong>订单ID:</strong> ${data.id}
-          </div>
-          <div>
-            <strong>卖方:</strong> ${data.partyA}
-          </div>
-          <div>
-            <strong>买方:</strong> ${data.partyB || "等待匹配中..."}
-          </div>
-          <div>
-            <strong>数量:</strong> ${data.amount} kWh
-          </div>
-          <div>
-            <strong>状态:</strong> <span class="status-badge ${statusClass}">${data.status}</span>
-          </div>
-          <div>
-            <strong>单价:</strong> ¥${data.price}/kWh
-          </div>
-          <div>
-            <strong>创建时间:</strong> ${data.createdat}
-          </div>
-          <div>
-            <strong>总金额:</strong> ¥${(data.amount * data.price).toFixed(2)}
-          </div>
-        `;
+      <div>
+        <strong>订单ID:</strong> ${data.id}
+      </div>
+      <div>
+        <strong>卖方:</strong> ${data.partyA}
+      </div>
+      <div>
+        <strong>买方:</strong> ${data.partyB}
+      </div>
+      <div>
+        <strong>数量:</strong> ${data.amount} kWh
+      </div>
+      <div>
+        <strong>状态:</strong> <span class="status-badge ${statusClass}">${
+          data.status
+        }</span>
+      </div>
+      <div>
+        <strong>单价:</strong> ¥${data.price}/kWh
+      </div>
+      <div>
+        <strong>创建时间:</strong> ${data.createdat}
+      </div>
+      <div>
+        <strong>总金额:</strong> ¥${(data.amount * data.price).toFixed(2)}
+      </div>
+    `;
+
+        // 根据状态添加操作按钮
+        const actionButtons = document.getElementById("actionButtons");
+        actionButtons.innerHTML = ""; // 清空之前的按钮
+
+        if (data.status === "已创建") {
+          const matchButton = document.createElement("button");
+          matchButton.className = "modal-btn";
+          matchButton.style.background =
+            "linear-gradient(to right, var(--energy-yellow), #e67e22";
+          matchButton.style.marginRight = "10px";
+          matchButton.innerHTML = '<i class="fas fa-handshake"></i> 匹配';
+          matchButton.onclick = () => matchOrder(data.id);
+          actionButtons.appendChild(matchButton);
+        } else if (data.status === "已匹配") {
+          const tradeButton = document.createElement("button");
+          tradeButton.className = "modal-btn";
+          tradeButton.style.background =
+            "linear-gradient(to right, var(--energy-green), #27ae60)";
+          tradeButton.style.marginRight = "10px";
+          tradeButton.innerHTML = '<i class="fas fa-exchange-alt"></i> 交易';
+          tradeButton.onclick = () => tradeOrder(data.id);
+          actionButtons.appendChild(tradeButton);
+        }
+      }
+
+      // 匹配订单函数
+      function matchOrder(orderId) {
+        const actionButtons = document.getElementById("actionButtons");
+        actionButtons.innerHTML =
+          '<button class="modal-btn" style="background: linear-gradient(to right, var(--energy-yellow), #e67e22); margin-right: 10px;"><i class="fas fa-spinner fa-spin"></i> 匹配中...</button>';
+
+        fetch(`${API_BASE_URL}/matchorder/${orderId}`)
+          .then((response) => response.json())
+          .then((data) => {
+              // 更新UI显示匹配成功
+              const statusBadge = document.querySelector(
+                ".modal-text .status-badge"
+              );
+              if (statusBadge) {
+                statusBadge.textContent = "已匹配";
+                statusBadge.className = "status-badge status-matched";
+              }
+
+              // 刷新订单列表
+              updatecardData();
+              loadAllOrders();
+
+              // 更新操作按钮
+              const actionButtons = document.getElementById("actionButtons");
+              actionButtons.innerHTML = "";
+              const tradeButton = document.createElement("button");
+              tradeButton.className = "modal-btn";
+              tradeButton.style.background =
+                "linear-gradient(to right, var(--energy-green), #27ae60)";
+              tradeButton.style.marginRight = "10px";
+              tradeButton.innerHTML =
+                '<i class="fas fa-exchange-alt"></i> 交易';
+              tradeButton.onclick = () => tradeOrder(orderId);
+              actionButtons.appendChild(tradeButton);
+          })
+          .catch((error) => {
+            console.error("匹配失败:", error);
+            actionButtons.innerHTML =
+              '<div class="error-message">匹配失败，请重试</div>';
+          });
+      }
+
+      // 交易订单函数
+      function tradeOrder(orderId) {
+        const actionButtons = document.getElementById("actionButtons");
+        actionButtons.innerHTML =
+          '<button class="modal-btn" style="background: linear-gradient(to right, var(--energy-green), #27ae60); margin-right: 10px;"><i class="fas fa-spinner fa-spin"></i> 交易中...</button>';
+
+        fetch(`${API_BASE_URL}/settleorder/${orderId}`)
+          .then((response) => response.json())
+          .then((data) => {
+              // 更新UI显示交易完成
+              const statusBadge = document.querySelector(
+                ".modal-text .status-badge"
+              );
+              if (statusBadge) {
+                statusBadge.textContent = "已完成";
+                statusBadge.className = "status-badge status-finished";
+              }
+
+              // 刷新订单列表
+              updatecardData();
+              loadAllOrders();
+
+              // 移除操作按钮
+              const actionButtons = document.getElementById("actionButtons");
+              actionButtons.innerHTML = "";
+          })
+          .catch((error) => {
+            console.error("交易失败:", error);
+            actionButtons.innerHTML =
+              '<div class="error-message">交易失败，请重试</div>';
+          });
       }
 
       // 关闭模态框
@@ -1426,7 +1318,6 @@
           modal.style.display = "none";
         }, 300);
       }
-      //
 
       //更新仪表盘数据
       function updatecardData() {
@@ -1434,17 +1325,27 @@
           .then((response) => response.json())
           .then((data) => {
             // 更新页面上的数据显示
+            const energyPrice = parseFloat(data.energyprice).toFixed(2);
             document.getElementById(
               "energy-price"
-            ).textContent = `¥${data.energyprice}`;
+            ).textContent = `¥${energyPrice}`;
             document.getElementById("active-orders").textContent =
               data.ordernum;
             document.getElementById("active-users").textContent = data.usernum;
+
+            // 更新创建订单页面的能源价格
+            document.getElementById("order-price").value = energyPrice;
+            document.getElementById(
+              "market-price-indicator"
+            ).textContent = `市场价: ¥${energyPrice}`;
+
+            // 更新订单详情计算
+            updateOrderDetails();
           })
           .catch((error) => console.error("获取数据失败:", error));
 
         fetch(`${API_BASE_URL}/listneworders`)
-          .then((response) => response.json()) // 解析返回的JSON数据
+          .then((response) => response.json())
           .then((data) => {
             const ordersTable = document.getElementById("orders-table");
             // 清空表格
@@ -1452,6 +1353,11 @@
 
             // 遍历数据并动态生成表格行
             data.forEach((order) => {
+              const statusMap = {
+                CREATED: { text: "已创建", class: "status-created" },
+                MATCHED: { text: "已匹配", class: "status-matched" },
+                FINISHED: { text: "已完成", class: "status-finished" },
+              };
               const row = document.createElement("tr");
 
               // 创建每一列的数据
@@ -1463,18 +1369,22 @@
 
               const statusCell = document.createElement("td");
               const statusBadge = document.createElement("span");
-              statusBadge.classList.add(
-                "status-badge",
-                `status-${order.status}`
-              );
-              statusBadge.textContent = order.status;
+              // 获取状态信息
+              const statusInfo = statusMap[order.status] || {
+                text: order.status,
+                class: "status-created",
+              };
+
+              // 创建状态标签
+              statusBadge.classList.add("status-badge", statusInfo.class);
+              statusBadge.textContent = statusInfo.text;
               statusCell.appendChild(statusBadge);
 
               const actionCell = document.createElement("td");
               const viewButton = document.createElement("button");
               viewButton.classList.add("btn", "btn-sm", "btn-outline-primary");
               viewButton.textContent = "查看";
-              viewButton.dataset.orderId = order.orderId; // 将订单ID存储在按钮的data属性中
+              viewButton.setAttribute("data-order-id", order.orderid); // 确保设置正确的属性
               actionCell.appendChild(viewButton);
 
               // 将所有列添加到行
@@ -1485,10 +1395,37 @@
 
               // 将行添加到表格的tbody中
               ordersTable.appendChild(row);
+              // 事件委托：处理仪表盘中动态生成的查看按钮
+              document
+                .getElementById("dashboard-section")
+                .addEventListener("click", function (event) {
+                  const button = event.target.closest("button[data-order-id]");
+                  if (button) {
+                    const orderId = button.getAttribute("data-order-id");
+                    showOrderDetail(orderId);
+                  }
+                });
             });
           })
           .catch((error) => console.error("获取订单数据失败:", error));
       }
+
+      // 更新订单详情计算
+      function updateOrderDetails() {
+        const amount = parseInt(document.getElementById("order-amount").value);
+        const price = parseFloat(document.getElementById("order-price").value);
+        const fee = (amount * price * 0.01).toFixed(2);
+        const total = (amount * price).toFixed(2);
+        const profit = (amount * price - fee).toFixed(2);
+
+        document.getElementById(
+          "order-price-display"
+        ).textContent = `¥${price.toFixed(2)}`;
+        document.getElementById("order-fee").textContent = `¥${fee}`;
+        document.getElementById("order-total").textContent = `¥${total}`;
+        document.getElementById("order-profit").textContent = `¥${profit}`;
+      }
+
       // 显示指定标签页
       function showTab(tabId) {
         // 隐藏所有标签页
@@ -1569,37 +1506,14 @@
         });
       }
 
-      // // 更新订单详情计算
-      // function updateOrderDetails() {
-      //     const amount = parseFloat(document.getElementById('order-amount').value) || 0;
-      //     const price = parseFloat(document.getElementById('order-price').value) || 1.25;
-      //     const fee = 0.01 * (price * amount);
-      //     const total = (price * amount) + fee;
-      //     const isSell = document.querySelector('[data-type="sell"]').classList.contains('active');
-
-      //     document.getElementById('order-price-display').textContent = `¥${price.toFixed(2)}`;
-      //     document.getElementById('order-fee').textContent = `¥${fee.toFixed(2)}`;
-      //     document.getElementById('order-total').textContent = `¥${total.toFixed(2)}`;
-      //     document.getElementById('order-profit').textContent = `¥${total.toFixed(2)}`;
-      //     document.getElementById('order-profit').className = isSell ? 'fs-5 fw-bold text-success' : 'fs-5 fw-bold text-danger';
-      // }
-
       // 创建订单
       function createOrder() {
         const amount = document.getElementById("order-amount").value;
         const price = document.getElementById("order-price").value;
-        const isSell = document
-          .querySelector('[data-type="sell"]')
-          .classList.contains("active");
-        const type = isSell ? "出售" : "购买";
+        const isSell = true; // 现在只支持出售能源
 
         if (!amount || amount < 1) {
           alert("请输入有效的能源数量");
-          return;
-        }
-
-        if (!price || price < 0.1) {
-          alert("请输入有效的能源价格");
           return;
         }
 
@@ -1612,10 +1526,17 @@
 
         // 模拟API调用
         setTimeout(() => {
-          // 创建成功
-          alert(
-            `${type}订单创建成功！\n数量: ${amount} kWh\n价格: ¥${price}/kWh`
-          );
+          fetch(`${API_BASE_URL}/createorder/${amount}`)
+            .then((response) => response.json())
+            .then((data) => {
+              alert(
+                `出售订单创建成功！\n数量: ${amount} kWh\n价格: ¥${price}/kWh`
+              );
+            })
+            .catch(function (error) {
+              modalText.innerHTML = `<div class="error-message">请求失败，请稍后再试。</div>`;
+              console.error("创建订单失败:", error);
+            });
 
           // 重置按钮
           createBtn.innerHTML = originalHtml;
@@ -1624,7 +1545,6 @@
           // 重置表单
           document.getElementById("order-amount").value = 100;
           document.getElementById("order-amount-range").value = 100;
-          document.getElementById("order-price").value = 1.25;
           updateOrderDetails();
         }, 1500);
       }
@@ -1665,44 +1585,86 @@
         // 模拟加载
         setTimeout(() => {
           // 这里可以添加实际加载订单的逻辑
+          let choiceStatus = document.getElementById(
+            "order-status-filter"
+          ).value;
+          let choiceType = document.getElementById("order-type-filter").value;
+          fetch(`${API_BASE_URL}/getallorders/${choiceStatus}/${choiceType}`)
+            .then((response) => response.json())
+            .then((data) => {
+              const ordersTable = document.getElementById("all-orders-table");
+              // 清空表格
+              ordersTable.innerHTML = "";
+
+              // 遍历数据并动态生成表格行
+              data.forEach((order) => {
+                const statusMap = {
+                  CREATED: { text: "已创建", class: "status-created" },
+                  MATCHED: { text: "已匹配", class: "status-matched" },
+                  FINISHED: { text: "已完成", class: "status-finished" },
+                };
+                const row = document.createElement("tr");
+
+                // 创建每一列的数据
+                const orderIdCell = document.createElement("td");
+                orderIdCell.textContent = order.orderid;
+
+                const quantityCell = document.createElement("td");
+                quantityCell.textContent = order.amount;
+
+                const statusCell = document.createElement("td");
+                const statusBadge = document.createElement("span");
+                const statusInfo = statusMap[order.status] || {
+                  text: order.status,
+                  class: "status-created",
+                };
+
+                // 创建状态标签
+                statusBadge.classList.add("status-badge", statusInfo.class);
+                statusBadge.textContent = statusInfo.text;
+                statusCell.appendChild(statusBadge);
+
+                const actionCell = document.createElement("td");
+                const viewButton = document.createElement("button");
+                viewButton.classList.add(
+                  "btn",
+                  "btn-sm",
+                  "btn-outline-primary"
+                );
+                viewButton.textContent = "查看";
+                viewButton.setAttribute("data-order-id", order.orderid); // 确保设置正确的属性
+                actionCell.appendChild(viewButton);
+
+                // 将所有列添加到行
+                row.appendChild(orderIdCell);
+                row.appendChild(quantityCell);
+                row.appendChild(statusCell);
+                row.appendChild(actionCell);
+
+                // 将行添加到表格的tbody中
+                ordersTable.appendChild(row);
+                document
+                  .getElementById("orders-section")
+                  .addEventListener("click", function (event) {
+                    const button = event.target.closest(
+                      "button[data-order-id]"
+                    );
+                    if (button) {
+                      const orderId = button.getAttribute("data-order-id");
+                      showOrderDetail(orderId);
+                    }
+                  });
+              });
+            })
+            .catch((error) => console.error("获取订单数据失败:", error));
 
           // 重置按钮
           refreshBtn.innerHTML = originalHtml;
           refreshBtn.disabled = false;
 
-          alert("订单列表已刷新！");
+          //alert("订单列表已刷新！");
         }, 800);
       }
-
-      // 显示订单详情
-      // function showOrderDetail(orderId) {
-      //     // 设置订单详情
-      //     document.getElementById('modal-order-id').textContent = orderId;
-      //     document.getElementById('modal-party-a').textContent = 'energy_user_15';
-      //     document.getElementById('modal-party-b').textContent = orderId.includes('101') ? 'energy_user_08' : '-';
-      //     document.getElementById('modal-created-at').textContent = '2023-10-16 10:30:00';
-      //     document.getElementById('modal-energy-amount').textContent = '150 kWh';
-      //     document.getElementById('modal-energy-price').textContent = '¥1.25';
-      //     document.getElementById('modal-transaction-fee').textContent = '¥1.88';
-      //     document.getElementById('modal-total-amount').textContent = '¥187.50';
-
-      //     // 设置订单状态
-      //     let statusElement = document.getElementById('modal-order-status');
-      //     if (orderId.includes('102') || orderId.includes('100')) {
-      //         statusElement.textContent = '已创建';
-      //         statusElement.className = 'status-badge status-created';
-      //     } else if (orderId.includes('101')) {
-      //         statusElement.textContent = '已匹配';
-      //         statusElement.className = 'status-badge status-matched';
-      //     } else {
-      //         statusElement.textContent = '已完成';
-      //         statusElement.className = 'status-badge status-finished';
-      //     }
-
-      //     // 显示模态框
-      //     const modal = new bootstrap.Modal(document.getElementById('order-detail-modal'));
-      //     modal.show();
-      // }
     </script>
   </body>
 </html>

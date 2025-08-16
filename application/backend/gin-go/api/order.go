@@ -136,6 +136,12 @@ func MatchOrder(c *gin.Context) {
 		return 
 	}
 
+	err = mysql.UpdateOrderParty(orderid, partyB)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "Failed to change order partyB",})
+		return 
+	}
+
 	c.JSON(http.StatusOK, "Successfully update order status.")
 	c.String(200, "\n")
 }
@@ -162,7 +168,31 @@ func SettleOrder(c *gin.Context) {
 func ListOrders(c *gin.Context) {
 	var orders []mysql.MysqlOrder
 	var err error
-	orders, err = mysql.ReturnOrders("")
+	var orderstatus, ordertype string
+
+	orderstatus = c.Param("status")
+	ordertype = c.Param("type")
+
+	if !UserLogged(){
+		c.JSON(http.StatusOK, gin.H{"message": "NO user logged in, cannot create an order",})
+		return 
+	}
+	
+	var userinfo *jwt.LoginUser
+	userinfo, err = jwt.ParseToken(CURRENT_USER)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "Failed to parse token" + CURRENT_USER,})
+		return
+	}
+
+	userid := userinfo.UserID
+
+
+	if ordertype != "ALL"{
+		ordertype = userid
+	}
+
+	orders, err = mysql.ReturnOrders(orderstatus, ordertype)
 	if (err != nil) {
 		c.JSON(http.StatusOK, "Failed to get orders")
 	}
@@ -187,7 +217,7 @@ func ListUserOrders(c *gin.Context) {
 
 	userid := userinfo.UserID
 
-	orders, err = mysql.ReturnOrders(userid)
+	orders, err = mysql.ReturnOrders("ALL", userid)
 	if (err != nil) {
 		c.JSON(http.StatusOK, "Failed to get orders")
 	}
@@ -197,7 +227,7 @@ func ListUserOrders(c *gin.Context) {
 func ListNewOrders(c *gin.Context) {
 	var orders []mysql.MysqlOrder
 	var err error
-	orders, err = mysql.ReturnOrders("")
+	orders, err = mysql.ReturnOrders("ALL", "ALL")
 	if (err != nil) {
 		c.JSON(http.StatusOK, "Failed to get orders")
 	}

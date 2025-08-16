@@ -100,6 +100,26 @@ func Initmysql() (err error) {
 	return nil
 }
 
+func UpdateOrderParty(orderid, partyB string) (err error) {
+	var cnt int64
+    sqlStr := "select count(order_id) from orders where order_id = ?"
+    err = db.QueryRow(sqlStr, orderid).Scan(&cnt)
+    if err != nil {
+        return err
+    }
+
+    if cnt == 0 {
+        return errors.New("order_id does not exist.")
+    }
+
+    sqlStr = "update orders set partyB = ? where order_id = ?"
+    _, err = db.Exec(sqlStr, partyB, orderid)
+    if err != nil {
+        return err
+    }
+	
+    return nil
+}
 
 func UpdateOrderStatus(orderid, newStatus string) (err error) {
     var cnt int64
@@ -213,17 +233,25 @@ func CheckPassword(username, password string) (err error) {
 	return errors.New("password wrong.")
 }
 
-func ReturnOrders(choice string) ([]MysqlOrder, error) {
+func ReturnOrders(status, userid string) ([]MysqlOrder, error) {
     var orders []MysqlOrder
     var sqlStr string
     var args []interface{}
     
-    if choice == "" {
-        sqlStr = "SELECT order_id, partyA, partyB, status, amount FROM orders"
-    } else {
-        sqlStr = "SELECT order_id, partyA, partyB, status, amount FROM orders WHERE partyA = ? OR partyB = ?"
-        args = append(args, choice, choice)
-    }
+   // 开始构建 SQL 查询语句
+   sqlStr = "SELECT order_id, partyA, partyB, status, amount FROM orders WHERE 1=1"
+
+   // 根据 status 过滤
+   if status != "ALL" {
+	   sqlStr += " AND status = ?"
+	   args = append(args, status)
+   }
+
+   // 根据 orderType 过滤
+   if userid != "ALL" {
+	   sqlStr += " AND (partyA = ? OR partyB = ?)"
+	   args = append(args, userid, userid)
+   }
 
     rows, err := db.Query(sqlStr, args...)
     if err != nil {
