@@ -31,4 +31,6 @@ func RegisterAssetRoutes(r *gin.Engine) {
 	r.GET("/getuserorders", ListUserOrders)
 	r.GET("/getsystemstatus", ReturnSystemStatus)
 	r.GET("/listneworders", ListNewOrders)
+	r.GET("/getcurrentuser", GetCurrentUser)
+	r.GET("/updatecurrentuser/:available/:balance", UpdateCurrentUser)
 }

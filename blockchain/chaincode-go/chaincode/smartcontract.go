@@ -285,6 +285,7 @@ func (s *SmartContract) SettleOrder(ctx contractapi.TransactionContextInterface,
 
 	userB.Balance -= altogether
 	userA.Balance += altogether
+	userB.Available += order.Amount
 	if err = s.UpdateUser(ctx, userA.UserID, userA.Available, userA.Balance); err != nil {
 		return err
 	}

@@ -726,6 +726,8 @@
             </div>
           </div>
           <div class="modal-footer">
+            <!-- 按钮将根据订单状态动态添加 -->
+            <div id="actionButtons"></div>
             <button class="modal-btn" id="closeModalBtn">关闭</button>
           </div>
         </div>
@@ -1026,6 +1028,7 @@
         bindEvents();
 
         updatecardData();
+        loadAllOrders();
 
         // 初始化图表
         initCharts();
@@ -1170,7 +1173,7 @@
           });
       }
 
-      // 更新 updateModalContent 函数，确保正确显示数据
+      // 更新 updateModalContent 函数，添加按钮
       function updateModalContent(data) {
         const statusClass =
           {
@@ -1207,6 +1210,105 @@
         <strong>总金额:</strong> ¥${(data.amount * data.price).toFixed(2)}
       </div>
     `;
+
+        // 根据状态添加操作按钮
+        const actionButtons = document.getElementById("actionButtons");
+        actionButtons.innerHTML = ""; // 清空之前的按钮
+
+        if (data.status === "已创建") {
+          const matchButton = document.createElement("button");
+          matchButton.className = "modal-btn";
+          matchButton.style.background =
+            "linear-gradient(to right, var(--energy-yellow), #e67e22";
+          matchButton.style.marginRight = "10px";
+          matchButton.innerHTML = '<i class="fas fa-handshake"></i> 匹配';
+          matchButton.onclick = () => matchOrder(data.id);
+          actionButtons.appendChild(matchButton);
+        } else if (data.status === "已匹配") {
+          const tradeButton = document.createElement("button");
+          tradeButton.className = "modal-btn";
+          tradeButton.style.background =
+            "linear-gradient(to right, var(--energy-green), #27ae60)";
+          tradeButton.style.marginRight = "10px";
+          tradeButton.innerHTML = '<i class="fas fa-exchange-alt"></i> 交易';
+          tradeButton.onclick = () => tradeOrder(data.id);
+          actionButtons.appendChild(tradeButton);
+        }
+      }
+
+      // 匹配订单函数
+      function matchOrder(orderId) {
+        const actionButtons = document.getElementById("actionButtons");
+        actionButtons.innerHTML =
+          '<button class="modal-btn" style="background: linear-gradient(to right, var(--energy-yellow), #e67e22); margin-right: 10px;"><i class="fas fa-spinner fa-spin"></i> 匹配中...</button>';
+
+        fetch(`${API_BASE_URL}/matchorder/${orderId}`)
+          .then((response) => response.json())
+          .then((data) => {
+              // 更新UI显示匹配成功
+              const statusBadge = document.querySelector(
+                ".modal-text .status-badge"
+              );
+              if (statusBadge) {
+                statusBadge.textContent = "已匹配";
+                statusBadge.className = "status-badge status-matched";
+              }
+
+              // 刷新订单列表
+              updatecardData();
+              loadAllOrders();
+
+              // 更新操作按钮
+              const actionButtons = document.getElementById("actionButtons");
+              actionButtons.innerHTML = "";
+              const tradeButton = document.createElement("button");
+              tradeButton.className = "modal-btn";
+              tradeButton.style.background =
+                "linear-gradient(to right, var(--energy-green), #27ae60)";
+              tradeButton.style.marginRight = "10px";
+              tradeButton.innerHTML =
+                '<i class="fas fa-exchange-alt"></i> 交易';
+              tradeButton.onclick = () => tradeOrder(orderId);
+              actionButtons.appendChild(tradeButton);
+          })
+          .catch((error) => {
+            console.error("匹配失败:", error);
+            actionButtons.innerHTML =
+              '<div class="error-message">匹配失败，请重试</div>';
+          });
+      }
+
+      // 交易订单函数
+      function tradeOrder(orderId) {
+        const actionButtons = document.getElementById("actionButtons");
+        actionButtons.innerHTML =
+          '<button class="modal-btn" style="background: linear-gradient(to right, var(--energy-green), #27ae60); margin-right: 10px;"><i class="fas fa-spinner fa-spin"></i> 交易中...</button>';
+
+        fetch(`${API_BASE_URL}/settleorder/${orderId}`)
+          .then((response) => response.json())
+          .then((data) => {
+              // 更新UI显示交易完成
+              const statusBadge = document.querySelector(
+                ".modal-text .status-badge"
+              );
+              if (statusBadge) {
+                statusBadge.textContent = "已完成";
+                statusBadge.className = "status-badge status-finished";
+              }
+
+              // 刷新订单列表
+              updatecardData();
+              loadAllOrders();
+
+              // 移除操作按钮
+              const actionButtons = document.getElementById("actionButtons");
+              actionButtons.innerHTML = "";
+          })
+          .catch((error) => {
+            console.error("交易失败:", error);
+            actionButtons.innerHTML =
+              '<div class="error-message">交易失败，请重试</div>';
+          });
       }
 
       // 关闭模态框
@@ -1560,7 +1662,7 @@
           refreshBtn.innerHTML = originalHtml;
           refreshBtn.disabled = false;
 
-          alert("订单列表已刷新！");
+          //alert("订单列表已刷新！");
         }, 800);
       }
     </script>

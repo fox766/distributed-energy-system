@@ -66,10 +66,69 @@ func UpdateUser(c *gin.Context) {
 	c.String(200, "\n")
 }
 
+func UpdateCurrentUser(c *gin.Context) {
+	var userid string
+	var available, balance string
+
+	if !UserLogged(){
+		c.JSON(http.StatusOK, gin.H{"message": "NO user logged in, cannot get current user info",})
+		return 
+	}
+	
+	var userinfo *jwt.LoginUser
+	var err error
+	userinfo, err = jwt.ParseToken(CURRENT_USER)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "Failed to parse token" + CURRENT_USER,})
+		return
+	}
+
+	userid = userinfo.UserID
+
+	available = c.Param("available")
+	balance = c.Param("balance")
+	
+	_, err = fabric.Contract.SubmitTransaction("UpdateUser", userid, available, balance)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update userinfo: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, "Successfully Update User info. " + "Your available is " + available + ", balance is " + balance)
+	c.String(200, "\n")
+}
+
 func GetUser(c *gin.Context) {
 	var userid string
 	userid = c.Param("userid")
 	result, err := fabric.Contract.EvaluateTransaction("GetUser", userid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read user: " + err.Error()})
+		return
+	}
+
+	var user User
+	json.Unmarshal(result, &user)
+	c.JSON(http.StatusOK, user)
+	c.String(200, "\n")
+}
+
+func GetCurrentUser(c *gin.Context) {
+	if !UserLogged(){
+		c.JSON(http.StatusOK, gin.H{"message": "NO user logged in, cannot get current user info",})
+		return 
+	}
+	
+	var userinfo *jwt.LoginUser
+	var err error
+	userinfo, err = jwt.ParseToken(CURRENT_USER)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "Failed to parse token" + CURRENT_USER,})
+		return
+	}
+
+	currentuser := userinfo.UserID
+
+	result, err := fabric.Contract.EvaluateTransaction("GetUser", currentuser)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read user: " + err.Error()})
 		return

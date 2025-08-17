@@ -272,3 +272,25 @@ func ReturnOrders(status, userid string) ([]MysqlOrder, error) {
     }
     return orders, nil
 }
+
+func ReturnOrderNum() (error, int){
+	var count int
+	var err error
+
+	err = db.QueryRow("SELECT COUNT(*) FROM users").Scan(&count)
+	if err != nil {
+		return err, -1
+	}
+	return nil, count
+}
+
+func ReturnUserNum() (error, int){
+	var count int
+	var err error
+
+	err = db.QueryRow("SELECT COUNT(*) FROM orders").Scan(&count)
+	if err != nil {
+		return err, -1
+	}
+	return nil, count
+}
