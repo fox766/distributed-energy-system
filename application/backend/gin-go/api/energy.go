@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"encoding/json"
 	"net/http"
 	//"time"
@@ -12,7 +13,13 @@ import (
 )
 
 
-
+func EnergyInit() error{
+	_, err := fabric.Contract.SubmitTransaction("Init")
+	if err != nil {
+		return fmt.Errorf("failed to Init EnergyStatus.")
+	}
+	return nil 
+}
 
 
 func Init(c *gin.Context) {

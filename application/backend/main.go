@@ -17,6 +17,7 @@ func main() {
 	// 用户初始化
 	api.UserInit()
 	api.OrderInit()
+	api.EnergyInit()
 
 	// 初始化数据库
 	if err := mysql.Initmysql(); err != nil {
