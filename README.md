@@ -31,7 +31,21 @@ sudo apt-get update
 sudo apt-get install apache2
 sudo systemctl start apache2
 ```
-## 运行本项目
+## 目录结构描述
+```
+├──application
+|   ├──backend     // 后端代码
+|   └──www         // 前端界面
+|       ├──index.html         //登陆界面
+|       └──user.html          //用户界面
+├──blockchain
+|   ├──bin          // fabric 的二进制文件，与区块链网络搭建相关
+|   ├──chaincode-go // 链码文件夹
+|   ├──config       // 配置文件
+|   └──network      // 与区块链网络搭建相关，包含自动化搭建脚本
+└──README.md // 帮助文档
+```
+## 使用说明
 1.下载本项目
 ```bash
 git clone https://github.com/fox766/distributed-energy-system.git
