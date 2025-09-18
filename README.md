@@ -20,6 +20,7 @@ sudo systemctl start docker
 sudo systemctl enable docker
 sudo gpasswd -a $USER docker
 newgrp docker
+自行配置一下docker代理
 ```
 4.安装jq
 ```bash
@@ -66,7 +67,9 @@ cd {YOUR_PATH}/distributed-energy-system/application/backend
 go run main.go
 ```
 5.前往浏览器界面
+```
 转到localhost/index.html即为主界面
+```
 6.关闭network
 ```bash
 ./stop.sh
