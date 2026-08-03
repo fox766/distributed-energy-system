@@ -1,666 +1,792 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>分布式能源系统</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>分布式能源交易系统</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+:root {
+    --sidebar-w: 230px;
+    --sidebar-bg: #111827;
+    --sidebar-hover: #1f2937;
+    --sidebar-active: #1e293b;
+    --primary: #6366f1;
+    --primary-l: #eef2ff;
+    --green: #10b981;
+    --green-l: #ecfdf5;
+    --amber: #f59e0b;
+    --amber-l: #fffbeb;
+    --red: #ef4444;
+    --red-l: #fef2f2;
+    --blue: #3b82f6;
+    --blue-l: #eff6ff;
+    --surface: #fff;
+    --bg: #f3f4f6;
+    --border: #e5e7eb;
+    --text: #111827;
+    --text-2: #6b7280;
+    --text-3: #9ca3af;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 1px 2px rgba(0,0,0,.05);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,.07),0 2px 4px -2px rgba(0,0,0,.05);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--text); line-height:1.5; }
+a { color:var(--primary); text-decoration:none; }
 
-        :root {
-            --primary: #4361ee;
-            --secondary: #3f37c9;
-            --accent: #4895ef;
-            --success: #4cc9f0;
-            --light: #f8f9fa;
-            --dark: #212529;
-            --gray: #6c757d;
-            --danger: #e63946;
-            --border-radius: 12px;
-            --box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-            --transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1);
-        }
+/* ─── Auth ─── */
+.auth-container { display:flex; justify-content:center; align-items:center; min-height:100vh; padding:20px; }
+.auth-card { background:var(--surface); border-radius:20px; box-shadow:0 25px 50px -12px rgba(0,0,0,.15); width:100%; max-width:420px; padding:44px 36px 32px; }
+.auth-card .logo { text-align:center; margin-bottom:32px; }
+.auth-card .logo i { font-size:32px; color:#fff; background:linear-gradient(135deg,#6366f1,#8b5cf6); width:60px; height:60px; border-radius:16px; display:flex; align-items:center; justify-content:center; margin:0 auto 14px; box-shadow:0 8px 24px rgba(99,102,241,.35); }
+.auth-card .logo h2 { font-size:20px; font-weight:700; }
 
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
+.form-group { margin-bottom:14px; }
+.form-group label { display:block; margin-bottom:4px; font-weight:600; font-size:12.5px; color:var(--text-2); text-transform:uppercase; letter-spacing:.04em; }
+.form-control { width:100%; padding:10px 14px; border:1.5px solid var(--border); border-radius:var(--radius-sm); font-size:14px; outline:none; transition:border-color .15s; background:var(--surface); }
+.form-control:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(99,102,241,.1); }
+select.form-control { cursor:pointer; }
+.btn { padding:11px 20px; border:none; border-radius:var(--radius-sm); font-size:14px; font-weight:600; cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; justify-content:center; gap:6px; }
+.btn-primary { background:var(--primary); color:#fff; width:100%; }
+.btn-primary:hover { background:#4f46e5; }
+.btn-outline { background:var(--surface); border:1.5px solid var(--border); color:var(--text-2); }
+.btn-outline:hover { background:var(--bg); }
+.btn-sm { padding:5px 12px; font-size:12.5px; border-radius:6px; width:auto; }
+.btn-xs { padding:3px 10px; font-size:11px; border-radius:5px; width:auto; }
+.alert { padding:10px 14px; border-radius:var(--radius-sm); margin-bottom:12px; font-size:13px; font-weight:500; }
+.alert-error { background:var(--red-l); color:var(--red); }
+.alert-success { background:var(--green-l); color:var(--green); }
+.alert-info { background:var(--blue-l); color:var(--blue); }
+.switch-text { text-align:center; margin-top:18px; color:var(--text-3); font-size:13px; }
 
-        .login-card {
-            width: 100%;
-            max-width: 480px;
-            background: white;
-            border-radius: var(--border-radius);
-            overflow: hidden;
-            box-shadow: var(--box-shadow);
-            padding: 30px;
-            text-align: center;
-            position: relative;
-            min-height: 640px;
-        }
+.badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+.badge-created { background:var(--blue-l); color:var(--blue); }
+.badge-matched { background:var(--amber-l); color:var(--amber); }
+.badge-finished { background:var(--green-l); color:var(--green); }
+.badge-cancelled { background:var(--red-l); color:var(--red); }
+.badge-peak { background:var(--red-l); color:var(--red); }
+.badge-flat { background:var(--amber-l); color:var(--amber); }
+.badge-valley { background:var(--green-l); color:var(--green); }
 
-        .card-content {
-            transition: var(--transition);
-            position: absolute;
-            width: calc(100% - 60px);
-            opacity: 1;
-            transform: translateY(0);
-        }
+/* ─── Layout ─── */
+.app-layout { display:flex; min-height:100vh; }
+.sidebar {
+    width:var(--sidebar-w); background:var(--sidebar-bg); color:#e5e7eb;
+    display:flex; flex-direction:column; position:fixed; top:0; left:0; bottom:0; z-index:50;
+    overflow-y:auto;
+}
+.sidebar-brand { padding:22px 20px 28px; display:flex; align-items:center; gap:10px; font-size:15px; font-weight:700; color:#fff; border-bottom:1px solid rgba(255,255,255,.06); }
+.sidebar-brand i { color:var(--primary); font-size:20px; }
+.sidebar-nav { flex:1; padding:12px 10px; }
+.sidebar-item {
+    display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:8px;
+    cursor:pointer; font-size:13.5px; font-weight:500; color:#9ca3af; transition:all .15s;
+    margin-bottom:2px; border:none; background:none; width:100%; text-align:left;
+}
+.sidebar-item:hover { background:var(--sidebar-hover); color:#e5e7eb; }
+.sidebar-item.active { background:var(--sidebar-active); color:#fff; font-weight:600; }
+.sidebar-item i { width:18px; text-align:center; font-size:15px; }
+.sidebar-section { padding:8px 14px 4px; font-size:10.5px; font-weight:700; color:#4b5563; text-transform:uppercase; letter-spacing:.08em; margin-top:8px; }
+.sidebar-user { padding:16px 20px; border-top:1px solid rgba(255,255,255,.06); font-size:12px; display:flex; align-items:center; gap:10px; }
+.sidebar-user .avatar { width:34px; height:34px; border-radius:10px; background:var(--primary); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:14px; }
+.sidebar-user .meta { flex:1; }
+.sidebar-user .name { color:#e5e7eb; font-weight:600; font-size:13px; }
+.sidebar-user .role { color:#6b7280; font-size:11px; }
 
-        .card-content.hidden {
-            opacity: 0;
-            transform: translateY(20px);
-            pointer-events: none;
-        }
+.main { flex:1; margin-left:var(--sidebar-w); display:flex; flex-direction:column; }
+.topbar { background:var(--surface); border-bottom:1px solid var(--border); padding:0 28px; height:54px; display:flex; align-items:center; justify-content:space-between; }
+.topbar .title { font-size:16px; font-weight:700; }
+.topbar .quick-stats { display:flex; gap:20px; align-items:center; font-size:13px; }
+.topbar .quick-stats span { display:flex; align-items:center; gap:6px; color:var(--text-2); }
+.topbar .quick-stats .val { font-weight:600; color:var(--text); }
 
-        .logo {
-            margin-bottom: 20px;
-        }
+.content { flex:1; padding:24px 28px; max-width:1300px; }
+.page-title { font-size:22px; font-weight:800; margin-bottom:6px; }
+.page-sub { font-size:13px; color:var(--text-3); margin-bottom:22px; }
 
-        .logo i {
-            font-size: 48px;
-            color: var(--primary);
-            background: rgba(67, 97, 238, 0.1);
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 15px;
-            transition: transform 0.5s ease;
-        }
+/* ─── Cards ─── */
+.card { background:var(--surface); border-radius:var(--radius); box-shadow:var(--shadow); border:1px solid var(--border); padding:20px 24px; margin-bottom:18px; }
+.card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+.card-header h3 { font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px; }
 
-        .logo h1 {
-            font-size: 24px;
-            color: var(--dark);
-            margin-bottom: 5px;
-        }
+/* ─── Stats Row ─── */
+.stat-row { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
+.stat-tile { background:var(--surface); border-radius:var(--radius); padding:18px 20px; box-shadow:var(--shadow); border:1px solid var(--border); display:flex; align-items:center; gap:14px; transition:box-shadow .2s; }
+.stat-tile:hover { box-shadow:var(--shadow-md); }
+.stat-tile .icon { width:44px; height:44px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+.stat-tile .val { font-size:24px; font-weight:800; }
+.stat-tile .lbl { font-size:12px; color:var(--text-3); margin-top:1px; }
 
-        .logo p {
-            color: var(--gray);
-            font-size: 14px;
-            margin-top: 5px;
-        }
+/* ─── Table ─── */
+table { width:100%; border-collapse:collapse; }
+th,td { padding:9px 12px; text-align:left; border-bottom:1px solid var(--border); font-size:13px; }
+th { font-weight:600; color:var(--text-3); font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; }
+td { color:var(--text-2); }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:var(--bg); }
 
-        .form-group {
-            margin-bottom: 20px;
-            text-align: left;
-        }
+/* ─── Two/Three column ─── */
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
 
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: var(--dark);
-            font-size: 14px;
-        }
+/* ─── Order Book ─── */
+.order-book-side h4 { font-size:13px; font-weight:700; margin-bottom:10px; color:var(--text); display:flex; align-items:center; gap:6px; }
+.order-book-side .sell h4 { color:var(--red); }
+.order-book-side .buy h4 { color:var(--green); }
 
-        .input-with-icon {
-            position: relative;
-        }
+/* ─── Create Form ─── */
+.energy-type-select { display:flex; gap:10px; margin-bottom:16px; }
+.energy-type-opt { flex:1; padding:14px; border:2px solid var(--border); border-radius:var(--radius-sm); text-align:center; cursor:pointer; transition:all .15s; }
+.energy-type-opt:hover { border-color:var(--primary); }
+.energy-type-opt.selected { border-color:var(--primary); background:var(--primary-l); }
+.energy-type-opt i { font-size:22px; margin-bottom:6px; display:block; }
+.energy-type-opt .name { font-size:13px; font-weight:600; }
+.energy-type-opt .co2 { font-size:11px; color:var(--green); margin-top:2px; }
+.summary-box { background:var(--bg); border-radius:var(--radius-sm); padding:16px; margin-bottom:14px; }
+.summary-box .row { display:flex; justify-content:space-between; padding:5px 0; font-size:13px; color:var(--text-2); }
+.summary-box .row.total { font-weight:700; font-size:16px; color:var(--text); border-top:1px solid var(--border); margin-top:5px; padding-top:9px; }
 
-        .input-with-icon i {
-            position: absolute;
-            left: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--gray);
-            font-size: 18px;
-        }
+/* ─── Modal ─── */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.35); display:flex; justify-content:center; align-items:center; z-index:200; backdrop-filter:blur(3px); }
+.modal-box { background:var(--surface); border-radius:var(--radius); padding:26px 28px; max-width:480px; width:94%; max-height:80vh; overflow-y:auto; box-shadow:var(--shadow-md); }
+.modal-box h3 { margin-bottom:14px; }
+.modal-box .row { margin-bottom:7px; font-size:13px; color:var(--text-2); }
+.modal-box .row strong { display:inline-block; width:80px; color:var(--text); }
+.modal-actions { display:flex; gap:8px; margin-top:16px; }
 
-        .form-control {
-            width: 100%;
-            padding: 14px 20px 14px 50px;
-            border: 2px solid #e1e5eb;
-            border-radius: 8px;
-            font-size: 16px;
-            transition: all 0.3s ease;
-            outline: none;
-        }
+/* ─── Charts ─── */
+.chart-container { position:relative; height:280px; }
+.chart-container canvas { width:100% !important; }
+.chart-row { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:18px; }
 
-        .form-control:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
-        }
+/* ─── TOU Price Display ─── */
+.tou-bar { display:flex; border-radius:var(--radius-sm); overflow:hidden; height:32px; margin-bottom:8px; }
+.tou-bar .tou-seg { display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#fff; }
+.tou-bar .tou-seg.peak { background:var(--red); }
+.tou-bar .tou-seg.flat { background:var(--amber); }
+.tou-bar .tou-seg.valley { background:var(--green); }
+.tou-current { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; padding:8px 0; }
+.tou-current .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
 
-        .password-toggle {
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            color: var(--gray);
-            cursor: pointer;
-            font-size: 18px;
-        }
+/* ─── Statement ─── */
+.statement-card { border-left:4px solid var(--primary); }
+.statement-card.income { border-left-color:var(--green); }
+.statement-card.expense { border-left-color:var(--red); }
+.statement-card .stmt-row { display:flex; justify-content:space-between; padding:3px 0; font-size:13px; }
+.statement-card .stmt-total { font-weight:700; font-size:16px; border-top:1px solid var(--border); margin-top:6px; padding-top:6px; }
 
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
 
-        .btn {
-            flex: 1;
-            padding: 14px;
-            border: none;
-            border-radius: 8px;
-            color: white;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(to right, var(--primary), var(--accent));
-            box-shadow: 0 4px 10px rgba(67, 97, 238, 0.3);
-        }
-
-        .btn-secondary {
-            background: var(--gray);
-        }
-
-        .btn-outline {
-            background: transparent;
-            border: 2px solid var(--gray);
-            color: var(--gray);
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        .btn-outline:hover {
-            background: rgba(108, 117, 125, 0.1);
-        }
-
-        .message {
-            padding: 12px;
-            border-radius: 8px;
-            margin: 15px 0;
-            font-size: 14px;
-            display: none;
-        }
-
-        .error-message {
-            background-color: rgba(230, 57, 70, 0.1);
-            color: var(--danger);
-        }
-
-        .success-message {
-            background-color: rgba(76, 201, 240, 0.1);
-            color: var(--success);
-        }
-
-        .user-info {
-            padding: 15px;
-            background-color: rgba(76, 201, 240, 0.1);
-            border-radius: 8px;
-            margin: 20px 0;
-            display: none;
-        }
-
-        .switch-action {
-            margin-top: 20px;
-            color: var(--gray);
-            font-size: 14px;
-        }
-
-        .switch-action a {
-            color: var(--primary);
-            text-decoration: none;
-            font-weight: 500;
-            margin-left: 5px;
-            cursor: pointer;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .pulse {
-            animation: pulse 1.5s infinite;
-        }
-
-        @keyframes pulse {
-            0% {
-                box-shadow: 0 0 0 0 rgba(67, 97, 238, 0.4);
-            }
-
-            70% {
-                box-shadow: 0 0 0 10px rgba(67, 97, 238, 0);
-            }
-
-            100% {
-                box-shadow: 0 0 0 0 rgba(67, 97, 238, 0);
-            }
-        }
-
-        @media (max-width: 480px) {
-            .login-card {
-                padding: 20px;
-            }
-
-            .action-buttons {
-                flex-direction: column;
-            }
-        }
-
-        .power-grid {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image:
-                linear-gradient(rgba(67, 97, 238, 0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(67, 97, 238, 0.05) 1px, transparent 1px);
-            background-size: 30px 30px;
-            z-index: -1;
-            opacity: 0.3;
-        }
-    </style>
+@media (max-width:900px) {
+    .sidebar { width:64px; }
+    .sidebar .sidebar-item span,.sidebar .sidebar-section,.sidebar .sidebar-brand span,.sidebar .sidebar-user .meta { display:none; }
+    .sidebar-brand { padding:18px 12px; justify-content:center; }
+    .sidebar-item { justify-content:center; padding:10px; }
+    .main { margin-left:64px; }
+    .stat-row { grid-template-columns:repeat(2,1fr); }
+    .grid-2,.chart-row { grid-template-columns:1fr; }
+}
+</style>
 </head>
-
 <body>
-    <div class="login-card">
-        <div class="power-grid"></div>
+<div id="app">
 
-        <!-- 登录界面 -->
-        <div class="card-content" id="login-section">
-            <div class="logo">
-                <i class="fas fa-bolt"></i>
-                <h1>分布式能源系统</h1>
-                <p>智能能源管理平台</p>
-            </div>
-
-            <div id="error-message" class="message error-message"></div>
-            <div id="success-message" class="message success-message"></div>
-
-            <div class="form-group">
-                <label for="username">用户名</label>
-                <div class="input-with-icon">
-                    <i class="fas fa-user"></i>
-                    <input type="text" id="username" class="form-control" placeholder="请输入用户名">
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="password">密码</label>
-                <div class="input-with-icon">
-                    <i class="fas fa-lock"></i>
-                    <input type="password" id="password" class="form-control" placeholder="请输入密码">
-                    <button type="button" class="password-toggle" id="togglePassword">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                </div>
-            </div>
-
-            <div class="action-buttons">
-                <button type="button" class="btn btn-primary" id="loginBtn">
-                    <i class="fas fa-sign-in-alt"></i> 登录
-                </button>
-                <button type="button" class="btn btn-outline" id="showRegisterBtn">
-                    <i class="fas fa-user-plus"></i> 注册
-                </button>
-            </div>
-
-            <div class="switch-action">
-                没有账户? <a id="showRegisterLink">立即注册</a>
-            </div>
+<!-- ═══ Auth ═══ -->
+<div class="auth-container" v-if="!token">
+    <div class="auth-card">
+        <div class="logo"><i class="fas fa-bolt"></i><h2>分布式能源交易系统</h2></div>
+        <div v-if="authMode==='login'">
+            <div class="alert alert-error" v-if="authError">{{ authError }}</div>
+            <div class="form-group"><label>用户名</label><input class="form-control" v-model="loginForm.username" placeholder="请输入用户名" @keyup.enter="doLogin"></div>
+            <div class="form-group"><label>密码</label><input class="form-control" type="password" v-model="loginForm.password" placeholder="请输入密码" @keyup.enter="doLogin"></div>
+            <button class="btn btn-primary" @click="doLogin" :disabled="loading">{{ loading?'登录中...':'登 录' }}</button>
+            <div class="switch-text">没有账户? <a @click="authMode='register'">立即注册</a></div>
         </div>
-
-        <!-- 注册界面 -->
-        <div class="card-content hidden" id="register-section">
-            <div class="logo">
-                <i class="fas fa-user-plus pulse"></i>
-                <h1>创建新账户</h1>
-                <p>加入分布式能源系统</p>
-            </div>
-
-            <div id="reg-error-message" class="message error-message"></div>
-            <div id="reg-success-message" class="message success-message"></div>
-
-            <div class="form-group">
-                <label for="reg-username">用户名</label>
-                <div class="input-with-icon">
-                    <i class="fas fa-user"></i>
-                    <input type="text" id="reg-username" class="form-control" placeholder="创建用户名">
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="reg-password">密码</label>
-                <div class="input-with-icon">
-                    <i class="fas fa-lock"></i>
-                    <input type="password" id="reg-password" class="form-control" placeholder="设置密码">
-                    <button type="button" class="password-toggle" id="toggleRegPassword">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="confirm-password">确认密码</label>
-                <div class="input-with-icon">
-                    <i class="fas fa-lock"></i>
-                    <input type="password" id="confirm-password" class="form-control" placeholder="再次输入密码">
-                </div>
-            </div>
-
-            <div class="action-buttons">
-                <button type="button" class="btn btn-primary" id="registerBtn">
-                    <i class="fas fa-check"></i> 注册
-                </button>
-                <button type="button" class="btn btn-outline" id="backToLoginBtn">
-                    <i class="fas fa-arrow-left"></i> 返回
-                </button>
-            </div>
-
-            <div class="switch-action">
-                已有账户? <a id="showLoginLink">返回登录</a>
-            </div>
-        </div>
-
-        <!-- 用户信息界面 -->
-        <div class="card-content hidden" id="user-section">
-            <div class="logo">
-                <i class="fas fa-user-circle" style="color: #4cc9f0;"></i>
-                <h1>欢迎回来</h1>
-                <p>分布式能源控制中心</p>
-            </div>
-
-            <div class="user-info" id="user-info">
-                <i class="fas fa-user"></i> <strong id="user-name">管理员</strong>
-                <div style="margin-top: 10px;">
-                    <i class="fas fa-id-card"></i> ID: <span id="user-id">DES-001</span>
-                </div>
-                <div style="margin-top: 10px;">
-                    <i class="fas fa-bolt"></i> 当前系统状态: <span style="color: #4cc9f0;">运行中</span>
-                </div>
-            </div>
-
-            <button type="button" class="btn btn-primary" id="dashboardBtn">
-                <i class="fas fa-tachometer-alt"></i> 进入控制面板
-            </button>
-
-            <div class="action-buttons" style="margin-top: 15px;">
-                <button type="button" class="btn btn-outline" id="logoutBtn">
-                    <i class="fas fa-sign-out-alt"></i> 注销
-                </button>
-            </div>
+        <div v-else>
+            <div class="alert alert-error" v-if="authError">{{ authError }}</div>
+            <div class="form-group"><label>用户名</label><input class="form-control" v-model="regForm.username" placeholder="创建用户名"></div>
+            <div class="form-group"><label>密码</label><input class="form-control" type="password" v-model="regForm.password" placeholder="设置密码"></div>
+            <div class="form-group"><label>确认密码</label><input class="form-control" type="password" v-model="regForm.confirm" placeholder="再次输入密码"></div>
+            <div class="form-group"><label>角色</label><select class="form-control" v-model="regForm.role"><option value="PRODUCER">能源生产者</option><option value="CONSUMER">能源消费者</option></select></div>
+            <button class="btn btn-primary" @click="doRegister" :disabled="loading">{{ loading?'注册中...':'注 册' }}</button>
+            <div class="switch-text">已有账户? <a @click="authMode='login'">返回登录</a></div>
         </div>
     </div>
-    <script>
-        // 后端API基础URL - 根据实际部署修改
-        const API_BASE_URL = 'http://localhost:8080';
-        
-        // 界面切换函数
-        function switchView(targetId) {
-            // 隐藏所有视图
-            document.querySelectorAll('.card-content').forEach(el => {
-                el.classList.add('hidden');
-            });
+</div>
 
-            // 显示目标视图
-            const targetView = document.getElementById(targetId);
-            targetView.classList.remove('hidden');
+<!-- ═══ Dashboard ═══ -->
+<div class="app-layout" v-else>
 
-            // 重置表单和消息
-            if (targetId === 'login-section') {
-                document.getElementById('username').value = '';
-                document.getElementById('password').value = '';
-                document.getElementById('error-message').style.display = 'none';
-                document.getElementById('success-message').style.display = 'none';
-            } else if (targetId === 'register-section') {
-                document.getElementById('reg-username').value = '';
-                document.getElementById('reg-password').value = '';
-                document.getElementById('confirm-password').value = '';
-                document.getElementById('reg-error-message').style.display = 'none';
-                document.getElementById('reg-success-message').style.display = 'none';
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-brand"><i class="fas fa-bolt"></i> <span>能源交易</span></div>
+        <nav class="sidebar-nav">
+            <div class="sidebar-section">主菜单</div>
+            <button class="sidebar-item" :class="{active:tab==='dashboard'}" @click="tab='dashboard';initCharts()"><i class="fas fa-chart-line"></i> <span>能源仪表盘</span></button>
+            <button class="sidebar-item" :class="{active:tab==='market'}" @click="tab='market'"><i class="fas fa-store"></i> <span>交易市场</span></button>
+            <button class="sidebar-item" :class="{active:tab==='create'}" @click="tab='create'"><i class="fas fa-plus-circle"></i> <span>创建订单</span></button>
+            <button class="sidebar-item" :class="{active:tab==='myorders'}" @click="tab='myorders'"><i class="fas fa-clipboard-list"></i> <span>我的订单</span></button>
+            <div class="sidebar-section">数据</div>
+            <button class="sidebar-item" :class="{active:tab==='transactions'}" @click="tab='transactions';loadTransactions()"><i class="fas fa-receipt"></i> <span>交易记录</span></button>
+            <button class="sidebar-item" :class="{active:tab==='audit'}" @click="tab='audit';loadAuditLog()"><i class="fas fa-history"></i> <span>审计日志</span></button>
+            <button class="sidebar-item" :class="{active:tab==='profile'}" @click="tab='profile'"><i class="fas fa-user-circle"></i> <span>账户信息</span></button>
+        </nav>
+        <div class="sidebar-user">
+            <div class="avatar">{{ (user.userName||'?')[0] }}</div>
+            <div class="meta"><div class="name">{{ user.userName }}</div><div class="role">{{ user.userRole }}</div></div>
+            <button class="btn btn-xs btn-outline" style="color:#9ca3af;border-color:#374151" @click="doLogout">退出</button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main">
+        <div class="topbar">
+            <div class="title">{{ tabLabels[tab]||'' }}</div>
+            <div class="quick-stats">
+                <span v-if="touPrice.period"><span class="badge" :class="'badge-'+touPrice.period">{{ touPrice.period==='peak'?'高峰':touPrice.period==='flat'?'平段':'低谷' }}</span> <span class="val">¥{{ touPrice.price.toFixed(2) }}</span>/kWh</span>
+                <span><i class="fas fa-wallet" style="color:var(--green)"></i> 余额 <span class="val">¥{{ user.balance.toFixed(2) }}</span></span>
+                <span><i class="fas fa-battery-full" style="color:var(--amber)"></i> 可用 <span class="val">{{ user.available.toFixed(0) }} kWh</span></span>
+            </div>
+        </div>
+
+        <div class="content">
+
+            <!-- ═══ Dashboard (P1) ═══ -->
+            <div class="tab-content" :class="{active:tab==='dashboard'}">
+                <div class="stat-row">
+                    <div class="stat-tile"><div class="icon" style="background:var(--primary-l);color:var(--primary)"><i class="fas fa-yen-sign"></i></div><div><div class="val">¥{{ touPrice.price.toFixed(2) }}</div><div class="lbl">实时电价 · {{ touPrice.period==='peak'?'高峰':touPrice.period==='flat'?'平段':'低谷' }}</div></div></div>
+                    <div class="stat-tile"><div class="icon" style="background:var(--green-l);color:var(--green)"><i class="fas fa-leaf"></i></div><div><div class="val">{{ carbonStats.totalCarbonSaved.toFixed(1) }} kg</div><div class="lbl">累计碳减排 · {{ carbonStats.totalGreenTrades }} 笔交易</div></div></div>
+                    <div class="stat-tile"><div class="icon" style="background:var(--blue-l);color:var(--blue)"><i class="fas fa-users"></i></div><div><div class="val">{{ sysStatus.usernum }}</div><div class="lbl">注册用户</div></div></div>
+                    <div class="stat-tile"><div class="icon" style="background:var(--amber-l);color:var(--amber)"><i class="fas fa-exchange-alt"></i></div><div><div class="val">{{ sysStatus.ordernum }}</div><div class="lbl">交易订单</div></div></div>
+
+                <!-- TOU Price Bar -->
+                <div class="card">
+                    <div class="card-header"><h3><i class="fas fa-clock"></i> 分时电价 (Time-of-Use)</h3></div>
+                    <div class="tou-bar">
+                        <div class="tou-seg valley" style="width:25%">0-6h 低谷 ¥0.4</div>
+                        <div class="tou-seg flat" style="width:12.5%">6-9h 平段 ¥0.8</div>
+                        <div class="tou-seg peak" style="width:12.5%">9-12h 高峰 ¥1.2</div>
+                        <div class="tou-seg flat" style="width:20.8%">12-17h 平段 ¥0.8</div>
+                        <div class="tou-seg peak" style="width:16.7%">17-21h 高峰 ¥1.2</div>
+                        <div class="tou-seg flat" style="width:8.3%">21-23h 平段 ¥0.8</div>
+                        <div class="tou-seg valley" style="width:4.2%">23-24h 低谷 ¥0.4</div>
+                    </div>
+                    <div class="tou-current">
+                        <span class="dot" :style="{background:touPrice.period==='peak'?'var(--red)':touPrice.period==='flat'?'var(--amber)':'var(--green)'}"></span>
+                        当前时段: <strong>{{ touPrice.period==='peak'?'高峰':touPrice.period==='flat'?'平段':touPrice.period==='valley'?'低谷':'未知' }}</strong> · 电价: <strong>¥{{ touPrice.price.toFixed(2) }}/kWh</strong>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="chart-row">
+                    <div class="card">
+                        <div class="card-header"><h3><i class="fas fa-chart-line"></i> 电价走势</h3></div>
+                        <div class="chart-container"><canvas id="priceChart"></canvas></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><h3><i class="fas fa-leaf"></i> 碳减排趋势</h3></div>
+                        <div class="chart-container"><canvas id="carbonChart"></canvas></div>
+                    </div>
+                </div>
+
+                <!-- Generation History (for producers) -->
+                <div class="card" v-if="user.userRole==='PRODUCER'||user.userRole==='admin'">
+                    <div class="card-header">
+                        <h3><i class="fas fa-solar-panel"></i> 发电记录</h3>
+                        <div style="display:flex;gap:8px">
+                            <button class="btn btn-xs btn-primary" @click="doGenerate('SOLAR_PANEL')"><i class="fas fa-sun"></i> 太阳能</button>
+                            <button class="btn btn-xs btn-primary" @click="doGenerate('WIND_TURBINE')"><i class="fas fa-wind"></i> 风能</button>
+                            <button class="btn btn-xs btn-primary" @click="doGenerate('BATTERY_STORAGE')"><i class="fas fa-car-battery"></i> 储能</button>
+                        </div>
+                    </div>
+                    <table>
+                        <thead><tr><th>时间</th><th>设备类型</th><th>发电量</th><th>用户</th></tr></thead>
+                        <tbody>
+                            <tr v-for="g in genHistory.slice(0,10)" :key="g.timestamp">
+                                <td style="font-size:12px">{{ (g.timestamp||'').slice(0,19) }}</td>
+                                <td>{{ g.devicetype==='SOLAR_PANEL'?'☀️ 太阳能':g.devicetype==='WIND_TURBINE'?'🌬️ 风能':'🔋 储能' }}</td>
+                                <td style="font-weight:600;color:var(--green)">{{ g.amount.toFixed(2) }} kWh</td>
+                                <td style="font-family:monospace;font-size:12px">{{ (g.userid||'').slice(-16) }}</td>
+                            </tr>
+                            <tr v-if="!genHistory.length"><td colspan="4" style="text-align:center;color:var(--text-3);padding:30px">暂无发电记录，点击上方按钮开始发电</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ═══ Market ═══ -->
+            <div class="tab-content" :class="{active:tab==='market'}">
+                <div class="grid-2">
+                    <div class="card order-book-side sell">
+                        <div class="card-header"><h4 style="color:var(--red)"><i class="fas fa-arrow-up"></i> 售电挂单</h4><button class="btn btn-xs btn-outline" @click="loadMarket">刷新</button></div>
+                        <table>
+                            <thead><tr><th>订单</th><th>能源</th><th>数量</th><th>单价</th></tr></thead>
+                            <tbody>
+                                <tr v-for="o in marketOrders.filter(x=>x.direction==='SELL'&&x.status==='CREATED')" :key="o.id">
+                                    <td style="font-family:monospace;font-size:11px">{{ o.id.slice(-16) }}</td>
+                                    <td>{{ o.energySource }}</td>
+                                    <td>{{ o.amount }} kWh</td>
+                                    <td style="font-weight:600">¥{{ o.price }}</td>
+                                </tr>
+                                <tr v-if="!marketOrders.filter(x=>x.direction==='SELL'&&x.status==='CREATED').length"><td colspan="4" style="text-align:center;color:var(--text-3);padding:30px">暂无卖单（订单将自动撮合）</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="card order-book-side buy">
+                        <div class="card-header"><h4 style="color:var(--green)"><i class="fas fa-arrow-down"></i> 求购挂单</h4><button class="btn btn-xs btn-outline" @click="loadMarket">刷新</button></div>
+                        <table>
+                            <thead><tr><th>订单</th><th>能源</th><th>数量</th><th>单价</th></tr></thead>
+                            <tbody>
+                                <tr v-for="o in marketOrders.filter(x=>x.direction==='BUY'&&x.status==='CREATED')" :key="o.id">
+                                    <td style="font-family:monospace;font-size:11px">{{ o.id.slice(-16) }}</td>
+                                    <td>{{ o.energySource }}</td>
+                                    <td>{{ o.amount }} kWh</td>
+                                    <td style="font-weight:600">¥{{ o.price }}</td>
+                                </tr>
+                                <tr v-if="!marketOrders.filter(x=>x.direction==='BUY'&&x.status==='CREATED').length"><td colspan="4" style="text-align:center;color:var(--text-3);padding:30px">暂无买单（订单将自动撮合）</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══ Create Order ═══ -->
+            <div class="tab-content" :class="{active:tab==='create'}">
+                <div class="card" style="max-width:720px">
+                    <h3 style="margin-bottom:18px"><i class="fas fa-plus-circle"></i> 创建能源交易订单</h3>
+                    <div class="alert alert-info" style="margin-bottom:14px"><i class="fas fa-magic"></i> 订单创建后将<strong>自动撮合</strong>，匹配到合适的交易方会立即结算。</div>
+                    <div class="form-group"><label>交易方向</label><select class="form-control" v-model="createForm.direction" style="width:200px"><option value="SELL">出售能源</option><option value="BUY">求购能源</option></select></div>
+                    <label style="font-weight:600;font-size:12.5px;color:var(--text-2);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:6px">能源类型</label>
+                    <div class="energy-type-select">
+                        <div class="energy-type-opt" :class="{selected:createForm.energySource==='SOLAR'}" @click="createForm.energySource='SOLAR'"><i class="fas fa-sun" style="color:#f59e0b"></i><div class="name">太阳能</div><div class="co2">碳减排 0.6 kg/kWh</div></div>
+                        <div class="energy-type-opt" :class="{selected:createForm.energySource==='WIND'}" @click="createForm.energySource='WIND'"><i class="fas fa-wind" style="color:#6366f1"></i><div class="name">风能</div><div class="co2">碳减排 0.7 kg/kWh</div></div>
+                        <div class="energy-type-opt" :class="{selected:createForm.energySource==='STORAGE'}" @click="createForm.energySource='STORAGE'"><i class="fas fa-car-battery" style="color:#10b981"></i><div class="name">储能</div><div class="co2">碳减排 0.5 kg/kWh</div></div>
+                    </div>
+                    <div class="grid-2">
+                        <div>
+                            <div class="form-group"><label>数量 (kWh)</label><input class="form-control" type="number" v-model.number="createForm.amount" min="1" max="10000"></div>
+                            <div class="form-group">
+                                <label>单价 (¥/kWh)</label>
+                                <div style="display:flex;gap:8px">
+                                    <input class="form-control" type="number" v-model.number="createForm.price" min="0.01" step="0.01" style="flex:1">
+                                    <button class="btn btn-xs btn-outline" @click="createForm.price=touPrice.price" title="使用当前分时电价" style="white-space:nowrap">
+                                        <i class="fas fa-bolt"></i> TOU ¥{{ touPrice.price.toFixed(2) }}
+                                    </button>
+                                </div>
+                                <div v-if="createForm.price===touPrice.price" style="font-size:11px;color:var(--green);margin-top:2px">
+                                    ✓ 已使用{{ touPrice.period==='peak'?'高峰':touPrice.period==='flat'?'平段':'低谷' }}时段电价
+                                </div>
+                                <div v-else style="font-size:11px;color:var(--text-3);margin-top:2px">
+                                    当前分时电价 ¥{{ touPrice.price.toFixed(2) }}/kWh，留空自动使用 TOU 价格
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="form-group"><label>交付开始</label><input class="form-control" type="datetime-local" v-model="createForm.deliveryStart"></div>
+                            <div class="form-group"><label>交付结束</label><input class="form-control" type="datetime-local" v-model="createForm.deliveryEnd"></div>
+                        </div>
+                    </div>
+                    <div class="summary-box">
+                        <div class="row"><span>单价</span><span>¥{{ createForm.price.toFixed(2) }}</span></div>
+                        <div class="row"><span>数量</span><span>{{ createForm.amount }} kWh</span></div>
+                        <div class="row total"><span>总金额</span><span>¥{{ (createForm.price*createForm.amount).toFixed(2) }}</span></div>
+                    </div>
+                    <button class="btn btn-primary" @click="doCreateOrder" :disabled="loading" style="width:100%">{{ loading?'创建中...':'创建订单（自动撮合）' }}</button>
+                    <div class="alert alert-error" v-if="createError" style="margin-top:12px">{{ createError }}</div>
+                    <div class="alert alert-success" v-if="createMsg" style="margin-top:12px">{{ createMsg }}</div>
+                    <div class="alert alert-info" v-if="autoMatchResult" style="margin-top:12px">
+                        <i class="fas" :class="autoMatchResult.matched?'fa-check-circle':'fa-info-circle'"></i>
+                        {{ autoMatchResult.matched? '✅ 自动撮合成功！交易已结算。':'ℹ️ '+autoMatchResult.message }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══ My Orders ═══ -->
+            <div class="tab-content" :class="{active:tab==='myorders'}">
+                <div class="card">
+                    <div class="card-header"><h3><i class="fas fa-clipboard-list"></i> 我的订单</h3><button class="btn btn-sm btn-outline" @click="loadMyOrders">刷新</button></div>
+                    <table>
+                        <thead><tr><th>订单 ID</th><th>类型</th><th>能源</th><th>数量</th><th>单价</th><th>交易方</th><th>状态</th><th>操作</th></tr></thead>
+                        <tbody>
+                            <tr v-for="o in myOrders" :key="o.id">
+                                <td style="font-family:monospace;font-size:12px">{{ o.id.slice(-18) }}</td>
+                                <td>{{ o.direction==='SELL'?'售电':'购电' }}</td>
+                                <td>{{ o.energySource||'-' }}</td>
+                                <td>{{ o.amount }} kWh</td>
+                                <td>¥{{ o.price }}</td>
+                                <td>{{ o.partyB||'-' }}</td>
+                                <td><span class="badge" :class="statusClass(o.status)">{{ statusLabel(o.status) }}</span></td>
+                                <td style="display:flex;gap:4px;flex-wrap:wrap">
+                                    <button class="btn btn-xs btn-outline" @click="showDetail(o)">详情</button>
+                                    <button class="btn btn-xs" style="background:var(--green);color:#fff" v-if="o.status==='MATCHED'" @click="doSettle(o.id)">结算</button>
+                                    <button class="btn btn-xs" style="background:var(--red);color:#fff" v-if="o.status==='CREATED'" @click="doCancel(o.id)">取消</button>
+                                </td>
+                            </tr>
+                            <tr v-if="!myOrders.length"><td colspan="8" style="text-align:center;color:var(--text-3);padding:40px">暂无订单</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ═══ Transactions (P3) ═══ -->
+            <div class="tab-content" :class="{active:tab==='transactions'}">
+                <!-- Monthly Statement -->
+                <div class="card">
+                    <div class="card-header"><h3><i class="fas fa-file-invoice-dollar"></i> 月度账单</h3></div>
+                    <div class="grid-3" style="margin-bottom:16px">
+                        <div class="statement-card income card" style="margin-bottom:0">
+                            <h4 style="color:var(--green);margin-bottom:4px"><i class="fas fa-arrow-down"></i> 收入</h4>
+                            <div style="font-size:28px;font-weight:800;color:var(--green)">¥{{ monthlySummary.totalIncome.toFixed(2) }}</div>
+                            <div style="font-size:12px;color:var(--text-3)">售电 {{ monthlySummary.totalSold.toFixed(0) }} kWh</div>
+                        </div>
+                        <div class="statement-card expense card" style="margin-bottom:0">
+                            <h4 style="color:var(--red);margin-bottom:4px"><i class="fas fa-arrow-up"></i> 支出</h4>
+                            <div style="font-size:28px;font-weight:800;color:var(--red)">¥{{ monthlySummary.totalExpense.toFixed(2) }}</div>
+                            <div style="font-size:12px;color:var(--text-3)">购电 {{ monthlySummary.totalBought.toFixed(0) }} kWh</div>
+                        </div>
+                        <div class="statement-card card" style="margin-bottom:0">
+                            <h4 style="color:var(--primary);margin-bottom:4px"><i class="fas fa-leaf"></i> 碳减排</h4>
+                            <div style="font-size:28px;font-weight:800;color:var(--primary)">{{ monthlySummary.carbonSaved.toFixed(1) }} kg</div>
+                            <div style="font-size:12px;color:var(--text-3)">共 {{ monthlySummary.tradeCount }} 笔交易</div>
+                        </div>
+                    </div>
+                    <div style="font-size:14px;font-weight:600;color:var(--text)">
+                        净收益: <span :style="{color:monthlySummary.totalIncome-monthlySummary.totalExpense>=0?'var(--green)':'var(--red)'}">
+                            ¥{{ (monthlySummary.totalIncome-monthlySummary.totalExpense).toFixed(2) }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- All Monthly Statements -->
+                <div class="card" v-if="allStatements.length > 1">
+                    <div class="card-header"><h3><i class="fas fa-history"></i> 历史账单</h3></div>
+                    <table>
+                        <thead><tr><th>月份</th><th>收入</th><th>支出</th><th>净收益</th><th>售电量</th><th>购电量</th><th>碳减排</th><th>交易数</th></tr></thead>
+                        <tbody>
+                            <tr v-for="s in allStatements" :key="s.month" :style="{fontWeight:s.month===currentMonth?'700':'400'}">
+                                <td>{{ s.month }}</td>
+                                <td style="color:var(--green)">¥{{ s.totalIncome.toFixed(2) }}</td>
+                                <td style="color:var(--red)">¥{{ s.totalExpense.toFixed(2) }}</td>
+                                <td :style="{color:s.totalIncome-s.totalExpense>=0?'var(--green)':'var(--red)'}">¥{{ (s.totalIncome-s.totalExpense).toFixed(2) }}</td>
+                                <td>{{ s.totalSold.toFixed(0) }} kWh</td>
+                                <td>{{ s.totalBought.toFixed(0) }} kWh</td>
+                                <td>{{ s.carbonSaved.toFixed(1) }} kg</td>
+                                <td>{{ s.tradeCount }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Transaction List -->
+                <div class="card">
+                    <div class="card-header"><h3><i class="fas fa-list"></i> 交易明细</h3><button class="btn btn-sm btn-outline" @click="loadTransactions">刷新</button></div>
+                    <table>
+                        <thead><tr><th>订单 ID</th><th>类型</th><th>能源</th><th>数量</th><th>单价</th><th>总金额</th><th>交易方 A</th><th>交易方 B</th><th>时间</th></tr></thead>
+                        <tbody>
+                            <tr v-for="o in transactions" :key="o.id">
+                                <td style="font-family:monospace;font-size:11px">{{ o.id.slice(-16) }}</td>
+                                <td>{{ o.direction==='SELL'?'售电':'购电' }}</td>
+                                <td>{{ o.energySource||'-' }}</td>
+                                <td>{{ o.amount }} kWh</td>
+                                <td>¥{{ o.price }}</td>
+                                <td style="font-weight:600">¥{{ (o.amount*o.price).toFixed(2) }}</td>
+                                <td style="font-family:monospace;font-size:11px">{{ (o.partyA||'').slice(-12) }}</td>
+                                <td style="font-family:monospace;font-size:11px">{{ (o.partyB||'').slice(-12) }}</td>
+                                <td style="font-size:11px">{{ (o.createdAt||'').slice(0,19) }}</td>
+                            </tr>
+                            <tr v-if="!transactions.length"><td colspan="9" style="text-align:center;color:var(--text-3);padding:40px">暂无交易记录</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ═══ Audit ═══ -->
+            <div class="tab-content" :class="{active:tab==='audit'}">
+                <div class="card">
+                    <div class="card-header"><h3><i class="fas fa-history"></i> 区块链审计日志</h3><button class="btn btn-sm btn-outline" @click="loadAuditLog">刷新</button></div>
+                    <p style="font-size:12px;color:var(--text-3);margin-bottom:14px"><i class="fas fa-shield-alt"></i> 所有操作记录均存储在 Hyperledger Fabric 账本上，不可篡改。</p>
+                    <table>
+                        <thead><tr><th>时间</th><th>操作</th><th>用户</th><th>详情</th><th style="max-width:140px">交易哈希</th></tr></thead>
+                        <tbody>
+                            <tr v-for="e in auditLog" :key="e.txid">
+                                <td style="font-size:12px;white-space:nowrap">{{ (e.timestamp||'').slice(0,19) }}</td>
+                                <td><span class="badge" :class="auditOpClass(e.operation)">{{ e.operation }}</span></td>
+                                <td>{{ (e.userid||'').slice(-16) }}</td>
+                                <td style="font-size:12px;max-width:300px;overflow:hidden;text-overflow:ellipsis">{{ e.details }}</td>
+                                <td style="font-family:monospace;font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis" :title="e.txid">{{ (e.txid||'').slice(0,16) }}...</td>
+                            </tr>
+                            <tr v-if="!auditLog.length"><td colspan="5" style="text-align:center;color:var(--text-3);padding:40px">暂无审计记录</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ═══ Profile ═══ -->
+            <div class="tab-content" :class="{active:tab==='profile'}">
+                <div class="card" style="max-width:600px">
+                    <h3 style="margin-bottom:16px"><i class="fas fa-user-circle"></i> 账户信息</h3>
+                    <div class="grid-2">
+                        <div class="form-group"><label>用户 ID</label><input class="form-control" :value="user.userID||user.userid" disabled></div>
+                        <div class="form-group"><label>用户名</label><input class="form-control" :value="user.userName||user.username" disabled></div>
+                        <div class="form-group"><label>角色</label><input class="form-control" :value="user.userRole||user.userrole" disabled></div>
+                        <div class="form-group"><label></label><input class="form-control" style="visibility:hidden"></div>
+                        <div class="form-group"><label>可用能源</label><input class="form-control" :value="user.available.toFixed(2)+' kWh'" disabled></div>
+                        <div class="form-group"><label>账户余额</label><input class="form-control" :value="'¥'+user.balance.toFixed(2)" disabled></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- ═══ Order Detail Modal ═══ -->
+<div class="modal-overlay" v-if="detailOrder" @click.self="detailOrder=null">
+    <div class="modal-box">
+        <h3><i class="fas fa-file-invoice"></i> 订单详情</h3>
+        <div class="row"><strong>订单 ID</strong> {{ detailOrder.id }}</div>
+        <div class="row"><strong>方向</strong> {{ detailOrder.direction==='SELL'?'售电':'购电' }}</div>
+        <div class="row"><strong>卖方</strong> {{ detailOrder.partyA }}</div>
+        <div class="row"><strong>买方</strong> {{ detailOrder.partyB||'等待匹配...' }}</div>
+        <div class="row"><strong>能源类型</strong> {{ detailOrder.energySource }}</div>
+        <div class="row"><strong>数量</strong> {{ detailOrder.amount }} kWh</div>
+        <div class="row"><strong>单价</strong> ¥{{ detailOrder.price }} / kWh</div>
+        <div class="row"><strong>状态</strong> <span class="badge" :class="statusClass(detailOrder.status)">{{ statusLabel(detailOrder.status) }}</span></div>
+        <div class="row"><strong>总金额</strong> ¥{{ (detailOrder.amount*detailOrder.price).toFixed(2) }}</div>
+        <div class="row"><strong>交付时间</strong> {{ detailOrder.deliveryStart }} ~ {{ detailOrder.deliveryEnd }}</div>
+        <div class="row"><strong>创建时间</strong> {{ detailOrder.createdAt }}</div>
+        <div class="modal-actions">
+            <button class="btn btn-sm" style="background:var(--green);color:#fff" v-if="detailOrder.status==='MATCHED'" @click="doSettle(detailOrder.id);detailOrder=null">确认结算</button>
+            <button class="btn btn-sm btn-outline" @click="detailOrder=null">关闭</button>
+        </div>
+    </div>
+</div>
+
+</div>
+
+<script>
+const { createApp, ref, reactive, onMounted, nextTick } = Vue;
+createApp({
+    setup() {
+        const API = 'http://localhost:8080/api';
+        const token = ref(localStorage.getItem('token')||'');
+        const loading = ref(false), authMode = ref('login'), authError = ref(''), authMsg = ref('');
+        const tab = ref('dashboard');
+        const loginForm = reactive({username:'',password:''});
+        const regForm = reactive({username:'',password:'',confirm:'',role:'PRODUCER'});
+        const user = reactive({userID:'',userName:'',userRole:'',available:0,balance:0});
+        const sysStatus = reactive({energyprice:0,fee:0,usernum:0,ordernum:0});
+        const recentOrders = ref([]), marketOrders = ref([]), myOrders = ref([]), marketFilter = ref('ALL');
+        const detailOrder = ref(null), createError = ref(''), createMsg = ref('');
+        const autoMatchResult = ref(null);
+        const carbonStats = reactive({totalCarbonSaved:0,totalGreenTrades:0});
+        const auditLog = ref([]);
+        const touPrice = reactive({price:1.0,period:'flat',hour:0});
+        const genHistory = ref([]);
+        const transactions = ref([]);
+        const monthlySummary = reactive({totalIncome:0,totalExpense:0,totalSold:0,totalBought:0,carbonSaved:0,tradeCount:0,userID:'',month:''});
+        const allStatements = ref([]);
+        const currentMonth = new Date().toISOString().slice(0,7);
+
+        const tabLabels = {
+            dashboard:'能源仪表盘', market:'交易市场', create:'创建订单',
+            myorders:'我的订单', transactions:'交易记录', audit:'审计日志', profile:'账户信息'
+        };
+
+        // Chart instances
+        let priceChartInst = null, carbonChartInst = null;
+
+        const now = new Date();
+        const createForm = reactive({direction:'SELL',energySource:'SOLAR',amount:100,price:1.0,deliveryStart:now.toISOString().slice(0,16),deliveryEnd:new Date(now.getTime()+7200000).toISOString().slice(0,16)});
+
+        function headers() {
+            const h = {'Content-Type':'application/json'};
+            if(token.value) h['Authorization'] = 'Bearer '+token.value;
+            return h;
+        }
+        async function api(url,opts={}) {
+            const r = await fetch(API+url,{headers:headers(),...opts});
+            const d = await r.json();
+            if(!r.ok) throw new Error(d.error||r.statusText);
+            return d;
+        }
+        function statusClass(s){return {CREATED:'badge-created',MATCHED:'badge-matched',FINISHED:'badge-finished',CANCELLED:'badge-cancelled'}[s]||'';}
+        function statusLabel(s){return {CREATED:'已创建',MATCHED:'已匹配',FINISHED:'已完成',CANCELLED:'已取消'}[s]||s;}
+        function auditOpClass(o){return {RegisterUser:'badge-created',CreateOrder:'badge-created',MatchOrder:'badge-matched',SettleOrder:'badge-finished',CancelOrder:'badge-cancelled',GenerateEnergy:'badge-finished',AutoMatch:'badge-finished',Init:'badge-created'}[o]||'';}
+
+        async function doLogin(){
+            authError.value=''; loading.value=true;
+            try{
+                const d=await api('/login',{method:'POST',body:JSON.stringify({username:loginForm.username,password:loginForm.password})});
+                token.value=d.token; localStorage.setItem('token',d.token);
+                Object.assign(user,d.user); loginForm.username=''; loginForm.password='';
+                await refreshAll();
+            }catch(e){authError.value=e.message}
+            loading.value=false;
+        }
+        async function doRegister(){
+            authError.value=''; loading.value=true;
+            if(regForm.password!==regForm.confirm){authError.value='两次密码不一致';loading.value=false;return}
+            try{
+                await api('/register',{method:'POST',body:JSON.stringify({username:regForm.username,password:regForm.password,role:regForm.role,energyType:'SOLAR'})});
+                authMsg.value='注册成功! 请登录'; authMode.value='login';
+            }catch(e){authError.value=e.message}
+            loading.value=false;
+        }
+        function doLogout(){token.value='';localStorage.removeItem('token');tab.value='dashboard';}
+
+        async function loadUser(){
+            try{const d=await api('/user/me');if(!d.error)Object.assign(user,d)}catch(e){token.value='';localStorage.removeItem('token')}
+        }
+        async function loadStatus(){try{Object.assign(sysStatus,await api('/market/status'))}catch(e){}}
+        async function loadRecent(){try{recentOrders.value=await api('/orders?status=ALL')}catch(e){}}
+        async function loadMarket(){try{marketOrders.value=await api('/orders?status=ALL')}catch(e){}}
+        async function loadMyOrders(){try{myOrders.value=await api('/orders/mine')}catch(e){}}
+        async function loadCarbon(){
+            try{const d=await fetch(API+'/market/carbon-stats',{headers:headers()}).then(r=>r.json());if(!d.error)Object.assign(carbonStats,d)}catch(e){}
+        }
+        async function loadAuditLog(){
+            try{const d=await fetch(API+'/market/audit-log?limit=50',{headers:headers()}).then(r=>r.json());if(Array.isArray(d))auditLog.value=d}catch(e){}
+        }
+        async function loadTOUPrice(){
+            try{const d=await fetch(API+'/market/tou-price',{headers:headers()}).then(r=>r.json());if(!d.error)Object.assign(touPrice,d)}catch(e){}
+        }
+        async function loadGenHistory(){
+            try{const d=await fetch(API+'/generation-history?limit=50',{headers:headers()}).then(r=>r.json());if(Array.isArray(d))genHistory.value=d}catch(e){}
+        }
+        async function loadTransactions(){
+            try{
+                const d=await fetch(API+'/transactions?userid='+encodeURIComponent(user.userID||user.userid)+'&limit=100',{headers:headers()}).then(r=>r.json());
+                if(Array.isArray(d))transactions.value=d;
+                // Load statement
+                const s=await fetch(API+'/transactions/statement?userid='+encodeURIComponent(user.userID||user.userid),{headers:headers()}).then(r=>r.json());
+                if(Array.isArray(s))allStatements.value=s;
+                // Load current month summary
+                const m=await fetch(API+'/transactions/summary?userid='+encodeURIComponent(user.userID||user.userid)+'&month='+currentMonth,{headers:headers()}).then(r=>r.json());
+                if(m&&!m.error)Object.assign(monthlySummary,m);
+            }catch(e){}
+        }
+        async function refreshAll(){
+            await Promise.all([loadStatus(),loadRecent(),loadMarket(),loadMyOrders(),loadUser(),loadCarbon(),loadTOUPrice(),loadGenHistory()]);
+        }
+
+        async function doCreateOrder(){
+            createError.value='';createMsg.value='';autoMatchResult.value=null;loading.value=true;
+            try{
+                const d=await api('/orders',{method:'POST',body:JSON.stringify({amount:createForm.amount,price:createForm.price,energySource:createForm.energySource,deliveryStart:createForm.deliveryStart,deliveryEnd:createForm.deliveryEnd,direction:createForm.direction})});
+                createMsg.value='订单创建成功! ID: '+d.orderid;
+                // Try auto-match
+                try{
+                    const match=await api('/orders/'+d.orderid+'/auto-match',{method:'POST'});
+                    autoMatchResult.value=match;
+                }catch(e){}
+                await refreshAll();
+            }catch(e){createError.value=e.message}
+            loading.value=false;
+        }
+        async function doSettle(id){try{await api('/orders/'+id+'/settle',{method:'POST'});await refreshAll()}catch(e){alert('结算失败: '+e.message)}}
+        async function doCancel(id){try{await api('/orders/'+id+'/cancel',{method:'POST'});await refreshAll()}catch(e){alert('取消失败: '+e.message)}}
+        function showDetail(o){detailOrder.value=o}
+
+        async function doGenerate(deviceType){
+            try{await api('/generate',{method:'POST',body:JSON.stringify({deviceType})});await loadGenHistory();await loadUser()}catch(e){alert('发电失败: '+e.message)}
+        }
+
+        // Chart initialization (P1)
+        async function initCharts(){
+            await nextTick();
+            await loadTOUPrice();
+            await loadGenHistory();
+
+            // Price History Chart
+            try{
+                const priceData = await fetch(API+'/market/price-history',{headers:headers()}).then(r=>r.json());
+                const labels = (Array.isArray(priceData)?priceData:[]).map(p=>(p.timestamp||'').slice(5,16)).reverse();
+                const prices = (Array.isArray(priceData)?priceData:[]).map(p=>p.price).reverse();
+
+                const ctx1 = document.getElementById('priceChart');
+                if(ctx1){
+                    if(priceChartInst) priceChartInst.destroy();
+                    priceChartInst = new Chart(ctx1, {
+                        type:'line',
+                        data:{
+                            labels:labels.length?labels:['暂无数据'],
+                            datasets:[{label:'电价 (¥/kWh)',data:prices.length?prices:[1.0],borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,0.1)',fill:true,tension:0.4,pointRadius:4,pointBackgroundColor:'#6366f1'}]
+                        },
+                        options:{
+                            responsive:true,maintainAspectRatio:false,
+                            plugins:{legend:{display:false}},
+                            scales:{
+                                y:{beginAtZero:false,grid:{color:'#f3f4f6'},ticks:{callback:v=>'¥'+v}}},
+                                x:{grid:{display:false}}
+                            }
+                        }
+                    });
+                }
+            }catch(e){console.log('Price chart init failed:',e)}
+
+            // Carbon Chart
+            try{
+                const carbonData = await fetch(API+'/market/carbon-stats',{headers:headers()}).then(r=>r.json());
+                const carbonHistory = await fetch(API+'/orders?status=FINISHED',{headers:headers()}).then(r=>r.json());
+                const carbonByHour = {};
+                if(Array.isArray(carbonHistory)){
+                    carbonHistory.forEach(o=>{
+                        const h = (o.createdAt||'').slice(0,13);
+                        if(h) carbonByHour[h] = (carbonByHour[h]||0) + (o.amount||0)*(o.energySource==='WIND'?0.7:o.energySource==='SOLAR'?0.6:o.energySource==='STORAGE'?0.5:0.3);
+                    });
+                }
+                const cLabels = Object.keys(carbonByHour).sort().map(k=>k.slice(5,16));
+                const cData = Object.keys(carbonByHour).sort().map(k=>carbonByHour[k]);
+
+                const ctx2 = document.getElementById('carbonChart');
+                if(ctx2){
+                    if(carbonChartInst) carbonChartInst.destroy();
+                    carbonChartInst = new Chart(ctx2, {
+                        type:'bar',
+                        data:{
+                            labels:cLabels.length?cLabels:['暂无数据'],
+                            datasets:[{label:'碳减排 (kg CO₂)',data:cData.length?cData:[0],backgroundColor:'rgba(16,185,129,0.6)',borderColor:'#10b981',borderWidth:1,borderRadius:4}]
+                        },
+                        options:{
+                            responsive:true,maintainAspectRatio:false,
+                            plugins:{legend:{display:false}},
+                            scales:{
+                                y:{beginAtZero:true,grid:{color:'#f3f4f6'},ticks:{callback:v=>v+' kg'}}},
+                                x:{grid:{display:false}}
+                            }
+                        }
+                    });
+                }
+            }catch(e){console.log('Carbon chart init failed:',e)}
+        }
+
+        onMounted(async ()=>{
+            if(token.value){
+                try{await loadUser()}catch(e){};
+                if(token.value)try{await refreshAll()}catch(e){};
+                if(tab.value==='dashboard') initCharts();
             }
-        }
-
-        // 显示错误消息
-        function showError(message, element) {
-            element.textContent = message;
-            element.style.display = 'block';
-
-            // 3秒后自动隐藏
-            setTimeout(() => {
-                element.style.display = 'none';
-            }, 3000);
-        }
-
-        // 显示成功消息
-        function showSuccess(message, element) {
-            element.textContent = message;
-            element.style.display = 'block';
-
-            // 3秒后自动隐藏
-            setTimeout(() => {
-                element.style.display = 'none';
-            }, 3000);
-        }
-
-        // 初始化
-        document.addEventListener('DOMContentLoaded', function() {
-            // 获取DOM元素
-            const loginBtn = document.getElementById('loginBtn');
-            const registerBtn = document.getElementById('registerBtn');
-            const logoutBtn = document.getElementById('logoutBtn');
-            const togglePassword = document.getElementById('togglePassword');
-            const toggleRegPassword = document.getElementById('toggleRegPassword');
-            const passwordInput = document.getElementById('password');
-            const regPasswordInput = document.getElementById('reg-password');
-            const errorMessage = document.getElementById('error-message');
-            const successMessage = document.getElementById('success-message');
-            const regErrorMessage = document.getElementById('reg-error-message');
-            const regSuccessMessage = document.getElementById('reg-success-message');
-            const showRegisterBtn = document.getElementById('showRegisterBtn');
-            const showRegisterLink = document.getElementById('showRegisterLink');
-            const backToLoginBtn = document.getElementById('backToLoginBtn');
-            const showLoginLink = document.getElementById('showLoginLink');
-            const dashboardBtn = document.getElementById('dashboardBtn');
-
-            // 密码可见性切换
-            togglePassword.addEventListener('click', function() {
-                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-                passwordInput.setAttribute('type', type);
-                this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
-            });
-
-            toggleRegPassword.addEventListener('click', function() {
-                const type = regPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-                regPasswordInput.setAttribute('type', type);
-                this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
-            });
-
-            // 切换到注册界面
-            showRegisterBtn.addEventListener('click', () => switchView('register-section'));
-            showRegisterLink.addEventListener('click', () => switchView('register-section'));
-
-            // 返回到登录界面
-            backToLoginBtn.addEventListener('click', () => switchView('login-section'));
-            showLoginLink.addEventListener('click', () => switchView('login-section'));
-
-            // 登录功能 - 调用后端登录接口
-            loginBtn.addEventListener('click', function() {
-                const username = document.getElementById('username').value;
-                const password = document.getElementById('password').value;
-
-                if (!username || !password) {
-                    showError('请输入用户名和密码', errorMessage);
-                    return;
-                }
-
-                // 显示加载效果
-                const originalHtml = loginBtn.innerHTML;
-                loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 登录中...';
-                loginBtn.disabled = true;
-
-                // 调用后端登录API
-                fetch(`${API_BASE_URL}/login/${username}/${password}`)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('登录失败');
-                        }
-                        return response.text();
-                    })
-                    .then(data => {
-                        // 登录成功
-                        showSuccess(data, successMessage);
-                        
-                        // 提取用户ID
-                        const userId = data.match(/Hi, (.*)/)?.[1] || username;
-                        document.getElementById('user-name').textContent = username;
-                        document.getElementById('user-id').textContent = userId;
-                        
-                        // 切换到用户界面
-                        setTimeout(() => switchView('user-section'), 1000);
-                    })
-                    .catch(error => {
-                        // 登录失败
-                        showError(error.message || '登录失败，请检查用户名和密码', errorMessage);
-                    })
-                    .finally(() => {
-                        // 重置按钮
-                        loginBtn.innerHTML = originalHtml;
-                        loginBtn.disabled = false;
-                    });
-            });
-
-            // 注册功能 - 调用后端注册接口
-            registerBtn.addEventListener('click', function() {
-                const username = document.getElementById('reg-username').value;
-                const password = document.getElementById('reg-password').value;
-                const confirmPassword = document.getElementById('confirm-password').value;
-
-                if (!username || !password) {
-                    showError('请输入用户名和密码', regErrorMessage);
-                    return;
-                }
-
-                if (password !== confirmPassword) {
-                    showError('两次输入的密码不一致', regErrorMessage);
-                    return;
-                }
-
-                // 显示加载效果
-                const originalHtml = registerBtn.innerHTML;
-                registerBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 注册中...';
-                registerBtn.disabled = true;
-
-                // 调用后端注册API
-                fetch(`${API_BASE_URL}/register/${username}/${password}`)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('注册失败');
-                        }
-                        return response.text();
-                    })
-                    .then(data => {
-                        // 注册成功
-                        showSuccess(data, regSuccessMessage);
-                        
-                        // 提取用户ID
-                        const userId = data.match(/userid is (.*)/)?.[1] || '';
-                        
-                        // 自动填充登录表单
-                        document.getElementById('username').value = username;
-                        document.getElementById('password').value = '';
-                        
-                        // 切换到登录界面
-                        setTimeout(() => switchView('login-section'), 1500);
-                    })
-                    .catch(error => {
-                        // 注册失败
-                        showError(error.message || '注册失败，用户名可能已被使用', regErrorMessage);
-                    })
-                    .finally(() => {
-                        // 重置按钮
-                        registerBtn.innerHTML = originalHtml;
-                        registerBtn.disabled = false;
-                    });
-            });
-
-            // 注销功能 - 调用后端注销接口
-            logoutBtn.addEventListener('click', function() {
-                // 显示加载效果
-                const originalHtml = logoutBtn.innerHTML;
-                logoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 注销中...';
-                logoutBtn.disabled = true;
-
-                // 调用后端注销API
-                fetch(`${API_BASE_URL}/logout`)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('注销失败');
-                        }
-                        return response.text();
-                    })
-                    .then(data => {
-                        // 注销成功
-                        showSuccess(data, successMessage);
-                        
-                        // 切换到登录界面
-                        setTimeout(() => switchView('login-section'), 1000);
-                    })
-                    .catch(error => {
-                        // 注销失败
-                        showError(error.message || '注销失败，请重试', errorMessage);
-                    })
-                    .finally(() => {
-                        // 重置按钮
-                        logoutBtn.innerHTML = originalHtml;
-                        logoutBtn.disabled = false;
-                    });
-            });
-
-            // 控制面板
-            dashboardBtn.addEventListener('click', function() {
-                // 显示加载效果
-                const originalHtml = this.innerHTML;
-                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 进入中...';
-                this.disabled = true;
-                
-                // 模拟进入控制面板
-                setTimeout(() => {
-                    alert('欢迎进入分布式能源控制面板！');
-                    window.location.href = 'user.html';  // 这里可以替换成你希望跳转的页面 URL
-                    this.innerHTML = originalHtml;
-                    this.disabled = false;
-                }, 1500);
-            });
         });
-    </script>
-</body>
 
+        // Auto-refresh every 10 seconds
+        setInterval(()=>{
+            if(token.value){
+                loadStatus();loadRecent();loadTOUPrice();
+                if(tab.value==='market') loadMarket();
+                if(tab.value==='myorders') loadMyOrders();
+                if(tab.value==='dashboard') loadGenHistory();
+            }
+        },10000);
+
+        return {token,loading,authMode,authError,authMsg,tab,tabLabels,loginForm,regForm,user,sysStatus,recentOrders,marketOrders,myOrders,marketFilter,detailOrder,createForm,createError,createMsg,autoMatchResult,carbonStats,auditLog,touPrice,genHistory,transactions,monthlySummary,allStatements,currentMonth,doLogin,doRegister,doLogout,doCreateOrder,doSettle,doCancel,showDetail,loadRecent,loadMyOrders,loadMarket,loadAuditLog,loadTransactions,doGenerate,initCharts,statusClass,statusLabel,auditOpClass};
+    }
+}).mount('#app');
+</script>
+</body>
 </html>

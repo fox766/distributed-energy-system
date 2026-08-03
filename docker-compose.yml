@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+  backend:
+    build: ./application/backend
+    container_name: energy-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - JWT_SECRET=energy-trading-system-2026
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=admin123
+      - FABRIC_CRYPTO_PATH=/fabric-crypto
+      - FABRIC_PEER_ADDRESS=dns:///peer0.org1.example.com:7051
+      - CHAINCODE_NAME=basic
+      - CHANNEL_NAME=mychannel
+    volumes:
+      # Mount Fabric crypto material so the backend can sign transactions
+      - ./blockchain/network/organizations/peerOrganizations/org1.example.com:/fabric-crypto:ro
+      # Persist the SQLite database
+      - backend-data:/app
+    networks:
+      - fabric
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/market/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    image: nginx:alpine
+    container_name: energy-frontend
+    ports:
+      - "80:80"
+    volumes:
+      - ./application/www:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - fabric
+    depends_on:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  backend-data:
+
+networks:
+  fabric:
+    external: true
+    name: fabric_test

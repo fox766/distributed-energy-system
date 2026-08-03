@@ -1,0 +1,4 @@
+credentials.db*
+.db-shm
+.db-wal
+credentials.json
