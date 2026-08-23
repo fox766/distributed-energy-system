@@ -56,6 +56,16 @@ type Order struct {
 	DeliveryStart string       `json:"deliveryStart"`
 	DeliveryEnd   string       `json:"deliveryEnd"`
 	CreatedAt     time.Time    `json:"createdAt"`
+	// MatchedWith is the counterpart order's ID, set when the pair is matched
+	// or settled. Without it a MATCHED order knows only its counterparty USER,
+	// which is not enough to settle the two orders as one deal. Orders written
+	// before this field existed simply unmarshal to "".
+	//
+	// The metadata tag matters: contractapi's schema generator ignores the
+	// json tag and marks every field without `metadata:",optional"` as
+	// required, which would make every CREATED order response fail schema
+	// validation (they legitimately have no counterpart yet).
+	MatchedWith string `json:"matchedWith,omitempty" metadata:"matchedWith,optional"`
 }
 
 // PriceRecord stores historical energy price data for charting
@@ -83,6 +93,15 @@ const (
 	WindTurbine DeviceType = "WIND_TURBINE"
 	BatteryStorage DeviceType = "BATTERY_STORAGE"
 )
+
+// validDeviceType reports whether d is a device the contract knows how to model.
+func validDeviceType(d DeviceType) bool {
+	switch d {
+	case SolarPanel, WindTurbine, BatteryStorage:
+		return true
+	}
+	return false
+}
 
 // GenerationRecord stores an energy generation event
 type GenerationRecord struct {

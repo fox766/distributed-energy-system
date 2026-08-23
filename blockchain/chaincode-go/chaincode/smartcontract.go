@@ -250,64 +250,99 @@ func (s *SmartContract) CreateOrder(ctx contractapi.TransactionContextInterface,
 }
 
 // MatchOrder matches a CREATED order to a buyer (partyB).
+// MatchOrder manually pairs two CREATED orders.
+//
+// The counterpart is named by ORDER id, not by user id. Identifying it by user
+// left a matched order with no link back to the order it traded against, so
+// each side of a pair could later be settled on its own terms — the same deal
+// paid for twice, with energy conjured out of nothing. Both orders now record
+// each other in MatchedWith, and settlement works on the pair.
 func (s *SmartContract) MatchOrder(ctx contractapi.TransactionContextInterface,
-	id, partyB string) error {
+	id, counterpartOrderID string) error {
+
+	if id == counterpartOrderID {
+		return fmt.Errorf("cannot match order %s with itself", id)
+	}
 
 	order, err := s.GetOrder(ctx, id)
 	if err != nil {
 		return fmt.Errorf("get order %s failed: %v", id, err)
 	}
+	counterpart, err := s.GetOrder(ctx, counterpartOrderID)
+	if err != nil {
+		return fmt.Errorf("get counterpart order %s failed: %v", counterpartOrderID, err)
+	}
 	if order.Status != "CREATED" {
 		return fmt.Errorf("order %s has status %s, expected CREATED", id, order.Status)
 	}
-	if partyB == order.PartyA {
+	if counterpart.Status != "CREATED" {
+		return fmt.Errorf("counterpart order %s has status %s, expected CREATED",
+			counterpartOrderID, counterpart.Status)
+	}
+	if order.PartyA == counterpart.PartyA {
 		return fmt.Errorf("cannot match your own order")
 	}
+	if order.Direction == counterpart.Direction {
+		return fmt.Errorf("orders must have opposite directions, both are %s", order.Direction)
+	}
+	if order.EnergySource != "" && counterpart.EnergySource != "" &&
+		order.EnergySource != counterpart.EnergySource {
+		return fmt.Errorf("energy source mismatch: %s vs %s",
+			order.EnergySource, counterpart.EnergySource)
+	}
 
-	// For BUY orders, buyer must have enough balance
+	sell, buy := order, counterpart
 	if order.Direction == "BUY" {
-		buyer, err := s.GetUser(ctx, partyB)
+		sell, buy = counterpart, order
+	}
+	if sell.Price > buy.Price {
+		return fmt.Errorf("sell price ¥%.2f exceeds buy price ¥%.2f", sell.Price, buy.Price)
+	}
+
+	// No balance check at match time: funds/energy were already locked when
+	// the order was created (BUY: Balance, SELL: Available).
+
+	order.PartyB = counterpart.PartyA
+	order.MatchedWith = counterpart.ID
+	counterpart.PartyB = order.PartyA
+	counterpart.MatchedWith = order.ID
+
+	for _, o := range []*Order{order, counterpart} {
+		oldStatusKey, _ := ctx.GetStub().CreateCompositeKey(OrderStatusPrefix, []string{o.Status, o.ID})
+		ctx.GetStub().DelState(oldStatusKey)
+
+		o.Status = "MATCHED"
+		orderJSON, err := json.Marshal(o)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to marshal order: %v", err)
 		}
-		totalCost := order.Amount * order.Price
-		if buyer.Balance < totalCost {
-			return fmt.Errorf("buyer has insufficient balance: have ¥%.2f, need ¥%.2f",
-				buyer.Balance, totalCost)
+		if err := ctx.GetStub().PutState(o.ID, orderJSON); err != nil {
+			return fmt.Errorf("failed to save order: %v", err)
 		}
+
+		newStatusKey, _ := ctx.GetStub().CreateCompositeKey(OrderStatusPrefix, []string{o.Status, o.ID})
+		ctx.GetStub().PutState(newStatusKey, []byte{0})
+
+		// Index the order under its counterparty too
+		userKey, _ := ctx.GetStub().CreateCompositeKey(OrderUserPrefix, []string{o.PartyB, o.ID})
+		ctx.GetStub().PutState(userKey, []byte{0})
 	}
 
-	// Remove old composite key
-	oldStatusKey, _ := ctx.GetStub().CreateCompositeKey(OrderStatusPrefix, []string{order.Status, id})
-	ctx.GetStub().DelState(oldStatusKey)
+	s.recordAudit(ctx, "MatchOrder", id, counterpart.PartyA,
+		fmt.Sprintf("matched SELL:%s + BUY:%s @ ¥%.2f", sell.ID, buy.ID, sell.Price))
 
-	order.PartyB = partyB
-	order.Status = "MATCHED"
-
-	orderJSON, err := json.Marshal(order)
-	if err != nil {
-		return fmt.Errorf("failed to marshal order: %v", err)
-	}
-	if err := ctx.GetStub().PutState(id, orderJSON); err != nil {
-		return fmt.Errorf("failed to save order: %v", err)
-	}
-
-	// New composite key for MATCHED status
-	newStatusKey, _ := ctx.GetStub().CreateCompositeKey(OrderStatusPrefix, []string{order.Status, id})
-	ctx.GetStub().PutState(newStatusKey, []byte{0})
-
-	// Composite key for buyer
-	userKey, _ := ctx.GetStub().CreateCompositeKey(OrderUserPrefix, []string{partyB, id})
-	ctx.GetStub().PutState(userKey, []byte{0})
-
-	s.recordAudit(ctx, "MatchOrder", id, partyB,
-		fmt.Sprintf("matched with seller=%s", order.PartyA))
-
+	orderJSON, _ := json.Marshal(order)
 	ctx.GetStub().SetEvent("OrderMatched", orderJSON)
 	return nil
 }
 
-// SettleOrder completes a MATCHED order, transferring funds and energy.
+// SettleOrder completes a MATCHED order by settling the whole pair.
+//
+// Settling one side alone was the double-spend: a pair is two orders, each
+// individually settleable, so the same trade moved money and energy twice.
+// Resolving the counterpart and running both through executePairSettlement
+// means the deal is accounted exactly once and the second call finds both
+// orders FINISHED and refuses.
 func (s *SmartContract) SettleOrder(ctx contractapi.TransactionContextInterface, id string) error {
 	order, err := s.GetOrder(ctx, id)
 	if err != nil {
@@ -317,64 +352,66 @@ func (s *SmartContract) SettleOrder(ctx contractapi.TransactionContextInterface,
 		return fmt.Errorf("order %s has status %s, expected MATCHED", id, order.Status)
 	}
 
-	userA, err := s.GetUser(ctx, order.PartyA)
-	if err != nil {
-		return err
-	}
-	userB, err := s.GetUser(ctx, order.PartyB)
+	counterpart, err := s.resolveCounterpart(ctx, order)
 	if err != nil {
 		return err
 	}
 
-	totalAmount := order.Price * order.Amount
+	sell, buy := order, counterpart
+	if order.Direction == "BUY" {
+		sell, buy = counterpart, order
+	}
 
-	if order.Direction == "SELL" {
-		// Seller (partyA) gets money, Buyer (partyB) gets energy
-		if userB.Balance < totalAmount {
-			// Revert order to CREATED
-			s.revertOrderToCreated(ctx, order)
-			return fmt.Errorf("trade failed: buyer balance ¥%.2f insufficient for ¥%.2f",
-				userB.Balance, totalAmount)
+	_, err = s.executePairSettlement(ctx, sell, buy, "MATCHED")
+	return err
+}
+
+// resolveCounterpart finds the order on the other side of a matched pair.
+//
+// Orders matched after the MatchedWith field was introduced carry the link
+// directly. Orders already sitting in MATCHED on the ledger from before it do
+// not, so fall back to searching the counterparty's orders for the unique
+// opposite-direction MATCHED one.
+func (s *SmartContract) resolveCounterpart(ctx contractapi.TransactionContextInterface,
+	order *Order) (*Order, error) {
+
+	if order.MatchedWith != "" {
+		counterpart, err := s.GetOrder(ctx, order.MatchedWith)
+		if err != nil {
+			return nil, fmt.Errorf("counterpart order %s not found: %v", order.MatchedWith, err)
 		}
-		userB.Balance -= totalAmount
-		userA.Balance += totalAmount
-		userB.Available += order.Amount
-	} else {
-		// BUY order: partyA already paid at creation; partyB (seller) gets money, partyA gets energy
-		userB.Balance += totalAmount
-		userA.Available += order.Amount
+		if counterpart.Status != "MATCHED" {
+			return nil, fmt.Errorf("counterpart order %s has status %s, expected MATCHED",
+				counterpart.ID, counterpart.Status)
+		}
+		return counterpart, nil
 	}
 
-	if err := s.saveUser(ctx, userA); err != nil {
-		return err
-	}
-	if err := s.saveUser(ctx, userB); err != nil {
-		return err
+	if order.PartyB == "" {
+		return nil, fmt.Errorf("order %s is MATCHED but records no counterparty", order.ID)
 	}
 
-	// Update composite keys
-	oldStatusKey, _ := ctx.GetStub().CreateCompositeKey(OrderStatusPrefix, []string{order.Status, id})
-	ctx.GetStub().DelState(oldStatusKey)
-
-	order.Status = "FINISHED"
-	orderJSON, _ := json.Marshal(order)
-	ctx.GetStub().PutState(id, orderJSON)
-
-	newStatusKey, _ := ctx.GetStub().CreateCompositeKey(OrderStatusPrefix, []string{order.Status, id})
-	ctx.GetStub().PutState(newStatusKey, []byte{0})
-
-	// Record price history
-	s.recordPriceHistory(ctx, order.Price, order.Amount)
-
-	// Record carbon savings
-	s.recordCarbon(ctx, order)
-
-	s.recordAudit(ctx, "SettleOrder", id, userB.UserID,
-		fmt.Sprintf("settled %.0fkWh @ ¥%.2f, carbon saved: %.2f kg",
-			order.Amount, order.Price, order.Amount*order.EnergySource.CarbonFactor()))
-
-	ctx.GetStub().SetEvent("OrderSettled", orderJSON)
-	return nil
+	candidates, err := s.GetUserOrders(ctx, order.PartyB)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search counterpart orders: %v", err)
+	}
+	var found []*Order
+	for _, c := range candidates {
+		if c.ID == order.ID || c.Status != "MATCHED" ||
+			c.Direction == order.Direction || c.PartyA != order.PartyB {
+			continue
+		}
+		found = append(found, c)
+	}
+	switch len(found) {
+	case 1:
+		return found[0], nil
+	case 0:
+		return nil, fmt.Errorf("order %s is MATCHED but its counterpart order cannot be found; cancel and re-create it", order.ID)
+	default:
+		return nil, fmt.Errorf("order %s has %d possible counterpart orders; settle them via MatchOrder to disambiguate",
+			order.ID, len(found))
+	}
 }
 
 // CancelOrder cancels a CREATED order and returns locked resources.
@@ -411,6 +448,12 @@ func (s *SmartContract) CancelOrder(ctx contractapi.TransactionContextInterface,
 	order.Status = "CANCELLED"
 	orderJSON, _ := json.Marshal(order)
 	ctx.GetStub().PutState(id, orderJSON)
+
+	// Index under the new status too. Without this the order is only removed
+	// from the CREATED index and never added anywhere, so GetAllOrders on
+	// "CANCELLED" (and hence "ALL") silently loses every cancelled order.
+	newStatusKey, _ := ctx.GetStub().CreateCompositeKey(OrderStatusPrefix, []string{order.Status, id})
+	ctx.GetStub().PutState(newStatusKey, []byte{0})
 
 	s.recordAudit(ctx, "CancelOrder", id, userA.UserID,
 		fmt.Sprintf("cancelled, returned %.0fkWh or ¥%.2f", order.Amount, order.Amount*order.Price))
@@ -751,14 +794,25 @@ func (s *SmartContract) recordAudit(ctx contractapi.TransactionContextInterface,
 // Utility Functions
 // =============================================================================
 
+// cstZone is the business timezone (UTC+8) for every hour-of-day decision the
+// contract makes: time-of-use pricing periods and the generation curves.
+//
+// It is a fixed offset rather than the process timezone on purpose. time.Unix
+// renders in the peer container's local zone, which is UTC — so "peak hours
+// 9-12" was being evaluated against UTC and midday in Beijing was priced as
+// off-peak. Reading TZ from the environment would fix that only as long as
+// every peer container agreed; a mismatch would make endorsing peers compute
+// different results for the same transaction and break consensus. A constant
+// compiled into the chaincode cannot diverge.
+var cstZone = time.FixedZone("CST", 8*3600)
+
 // now returns the transaction timestamp deterministically (same for all endorsing peers).
 func (s *SmartContract) now(ctx contractapi.TransactionContextInterface) time.Time {
 	ts, err := ctx.GetStub().GetTxTimestamp()
 	if err != nil {
-		return time.Unix(0, 0)
+		return time.Unix(0, 0).In(cstZone)
 	}
-	t := time.Unix(ts.Seconds, int64(ts.Nanos))
-	return t
+	return time.Unix(ts.Seconds, int64(ts.Nanos)).In(cstZone)
 }
 
 // ItemExists checks whether a key exists in the world state.
@@ -832,21 +886,35 @@ func (s *SmartContract) recordPriceHistory(ctx contractapi.TransactionContextInt
 }
 
 
-// revertOrderToCreated reverts a MATCHED order back to CREATED status
-// (used when settlement fails).
-func (s *SmartContract) revertOrderToCreated(ctx contractapi.TransactionContextInterface,
-	order *Order) {
+// TopUpBalance credits a user's balance.
+//
+// Consumers register with no funds and a BUY order escrows its full cost at
+// creation, so without this there is no way for a consumer to ever buy.
+// Authorization lives in the backend's admin-only route: every request reaches
+// the ledger under the same gateway identity, so the chaincode cannot tell an
+// admin from anyone else.
+func (s *SmartContract) TopUpBalance(ctx contractapi.TransactionContextInterface,
+	userID string, amount float64) error {
 
-	oldKey, _ := ctx.GetStub().CreateCompositeKey(OrderStatusPrefix, []string{order.Status, order.ID})
-	ctx.GetStub().DelState(oldKey)
+	if amount <= 0 {
+		return fmt.Errorf("top-up amount must be positive, got %.2f", amount)
+	}
 
-	order.Status = "CREATED"
-	order.PartyB = ""
-	orderJSON, _ := json.Marshal(order)
-	ctx.GetStub().PutState(order.ID, orderJSON)
+	user, err := s.GetUser(ctx, userID)
+	if err != nil {
+		return err
+	}
+	user.Balance += amount
+	if err := s.saveUser(ctx, user); err != nil {
+		return err
+	}
 
-	newKey, _ := ctx.GetStub().CreateCompositeKey(OrderStatusPrefix, []string{order.Status, order.ID})
-	ctx.GetStub().PutState(newKey, []byte{0})
+	s.recordAudit(ctx, "TopUpBalance", "", userID,
+		fmt.Sprintf("credited ¥%.2f, new balance ¥%.2f", amount, user.Balance))
+
+	ctx.GetStub().SetEvent("BalanceTopUp", []byte(fmt.Sprintf(
+		`{"userid":"%s","amount":%.2f,"balance":%.2f}`, userID, amount, user.Balance)))
+	return nil
 }
 
 // =============================================================================
@@ -920,6 +988,10 @@ func (s *SmartContract) GenerateEnergy(ctx contractapi.TransactionContextInterfa
 	if user.UserRole != "PRODUCER" && user.UserRole != "admin" {
 		return fmt.Errorf("user %s is not a producer", userID)
 	}
+	if !validDeviceType(DeviceType(deviceType)) {
+		return fmt.Errorf("invalid deviceType %q: must be one of SOLAR_PANEL, WIND_TURBINE, BATTERY_STORAGE",
+			deviceType)
+	}
 
 	now := s.now(ctx)
 	hour := now.Hour()
@@ -946,8 +1018,6 @@ func (s *SmartContract) GenerateEnergy(ctx contractapi.TransactionContextInterfa
 	case BatteryStorage:
 		// Storage: constant discharge
 		generated = 1.5 // 1.5 kWh/h steady
-	default:
-		generated = 1.0
 	}
 
 	// Cap minimum generation
@@ -1047,20 +1117,60 @@ func (s *SmartContract) AutoMatchOrder(ctx contractapi.TransactionContextInterfa
 		return "", err
 	}
 
+	best := findBestMatch(order, allOrders)
+	if best == nil {
+		return `{"matched":false,"message":"no compatible order found"}`, nil
+	}
+
+	// Determine SELL and BUY
+	var sellOrder, buyOrder *Order
+	if order.Direction == "SELL" {
+		sellOrder = order
+		buyOrder = best.candidate
+	} else {
+		sellOrder = best.candidate
+		buyOrder = order
+	}
+
+	result, tradeAmount, residualID, err := s.tradePair(ctx, sellOrder, buyOrder)
+	if err != nil {
+		return "", err
+	}
+
+	s.recordAudit(ctx, "AutoMatch", orderID, "",
+		fmt.Sprintf("auto-matched SELL:%s + BUY:%s amount=%.0fkWh @ ¥%.2f delivery_overlap=%v partial=%v",
+			sellOrder.ID, buyOrder.ID, tradeAmount, sellOrder.Price, best.overlap, residualID != ""))
+
+	return result, nil
+}
+
+// matchScore ranks a candidate counterpart order.
+type matchScore struct {
+	candidate *Order
+	score     float64
+	overlap   bool
+}
+
+// findBestMatch picks the best counterpart for order out of candidates, or nil
+// when nothing is compatible.
+//
+// Compatible means: opposite direction, a different party, the same energy
+// source when both orders name one, and a sell price the buyer is willing to
+// pay. Among those, the widest price spread wins, with a heavy bonus for
+// overlapping delivery windows so a deliverable match always beats a cheaper
+// undeliverable one; ties go to the overlapping candidate.
+//
+// Pure function over already-loaded orders — no ledger access, so it is
+// directly unit-testable.
+func findBestMatch(order *Order, candidates []*Order) *matchScore {
 	oppositeDir := "BUY"
 	if order.Direction == "BUY" {
 		oppositeDir = "SELL"
 	}
 
-	type matchScore struct {
-		candidate *Order
-		score     float64
-		overlap   bool
-	}
 	var best *matchScore
-
-	for _, candidate := range allOrders {
-		if candidate.ID == orderID {
+	for _, candidate := range candidates {
+		if candidate.ID == order.ID {
 			continue
 		}
 		if candidate.Direction != oppositeDir {
@@ -1085,9 +1195,7 @@ func (s *SmartContract) AutoMatchOrder(ctx contractapi.TransactionContextInterfa
 			continue
 		}
 
-		// Delivery window overlap check
 		overlap := deliveryWindowsOverlap(order, candidate)
-		// Price spread (smaller is better: buyer wants low sell price)
 		score := buyPrice - sellPrice
 		if overlap {
 			score += 10.0 // heavy bonus for overlapping delivery windows
@@ -1098,75 +1206,60 @@ func (s *SmartContract) AutoMatchOrder(ctx contractapi.TransactionContextInterfa
 			best = &matchScore{candidate: candidate, score: score, overlap: overlap}
 		}
 	}
+	return best
+}
 
-	if best == nil {
-		return `{"matched":false,"message":"no compatible order found"}`, nil
-	}
+// tradePair trades the overlap of a compatible SELL/BUY pair: it trims the
+// larger order to the traded amount, carries the remainder into a residual
+// order, and settles the pair. Returns the settlement JSON, the traded amount,
+// and the residual order ID ("" when the amounts matched exactly).
+//
+// The residual is created without taking a second lock — the original order
+// creation already locked the full amount, so re-locking the remainder would
+// double-charge the party.
+func (s *SmartContract) tradePair(ctx contractapi.TransactionContextInterface,
+	sellOrder, buyOrder *Order) (string, float64, string, error) {
 
-	// Determine SELL and BUY
-	var sellOrder, buyOrder *Order
-	if order.Direction == "SELL" {
-		sellOrder = order
-		buyOrder = best.candidate
-	} else {
-		sellOrder = best.candidate
-		buyOrder = order
-	}
-
-	// Partial fill: trade the minimum of the two amounts
 	tradeAmount := sellOrder.Amount
 	if buyOrder.Amount < tradeAmount {
 		tradeAmount = buyOrder.Amount
 	}
 
-	// If full amounts match, do a simple match & settle
-	if sellOrder.Amount == buyOrder.Amount {
-		return s.settleMatchPair(ctx, sellOrder, buyOrder, tradeAmount)
-	}
-
-	// Partial fill — need to split the larger order
-	partial := false
-	var residual *Order
-	if sellOrder.Amount > buyOrder.Amount {
-		// Split sell order: create residual SELL for remaining amount
-		residualID := sellOrder.ID + "_r"
-		residualAmount := sellOrder.Amount - buyOrder.Amount
-		err = s.CreateOrder(ctx, residualID, sellOrder.PartyA, "SELL",
+	var residualID string
+	switch {
+	case sellOrder.Amount > buyOrder.Amount:
+		residualID = sellOrder.ID + "_r"
+		residualAmount := sellOrder.Amount - tradeAmount
+		if err := s.updateOrderAmount(ctx, sellOrder, tradeAmount); err != nil {
+			return "", 0, "", fmt.Errorf("partial fill: failed to trim sell order: %v", err)
+		}
+		if err := s.createResidualOrder(ctx, residualID, sellOrder.PartyA, "SELL",
 			string(sellOrder.EnergySource), sellOrder.DeliveryStart, sellOrder.DeliveryEnd,
-			residualAmount, sellOrder.Price, sellOrder.Fee)
-		if err != nil {
-			return "", fmt.Errorf("partial fill: failed to create residual sell order: %v", err)
+			residualAmount, sellOrder.Price, sellOrder.Fee); err != nil {
+			return "", 0, "", fmt.Errorf("partial fill: failed to create residual sell order: %v", err)
 		}
-		residual, _ = s.GetOrder(ctx, residualID)
-		partial = true
-	} else if buyOrder.Amount > sellOrder.Amount {
-		// Split buy order: create residual BUY for remaining amount
-		residualID := buyOrder.ID + "_r"
-		residualAmount := buyOrder.Amount - sellOrder.Amount
-		err = s.CreateOrder(ctx, residualID, buyOrder.PartyA, "BUY",
+	case buyOrder.Amount > sellOrder.Amount:
+		residualID = buyOrder.ID + "_r"
+		residualAmount := buyOrder.Amount - tradeAmount
+		if err := s.updateOrderAmount(ctx, buyOrder, tradeAmount); err != nil {
+			return "", 0, "", fmt.Errorf("partial fill: failed to trim buy order: %v", err)
+		}
+		if err := s.createResidualOrder(ctx, residualID, buyOrder.PartyA, "BUY",
 			string(buyOrder.EnergySource), buyOrder.DeliveryStart, buyOrder.DeliveryEnd,
-			residualAmount, buyOrder.Price, buyOrder.Fee)
-		if err != nil {
-			return "", fmt.Errorf("partial fill: failed to create residual buy order: %v", err)
+			residualAmount, buyOrder.Price, buyOrder.Fee); err != nil {
+			return "", 0, "", fmt.Errorf("partial fill: failed to create residual buy order: %v", err)
 		}
-		residual, _ = s.GetOrder(ctx, residualID)
-		partial = true
 	}
 
-	result, err := s.settleMatchPair(ctx, sellOrder, buyOrder, tradeAmount)
+	result, err := s.settleMatchedPair(ctx, sellOrder, buyOrder)
 	if err != nil {
-		return "", err
+		return "", 0, "", err
 	}
-
-	if partial {
-		result = result[:len(result)-1] + fmt.Sprintf(`,"partial":true,"residualOrder":"%s","tradedAmount":%.0f}`, residual.ID, tradeAmount)
+	if residualID != "" {
+		result = result[:len(result)-1] +
+			fmt.Sprintf(`,"partial":true,"residualOrder":"%s","tradedAmount":%.0f}`, residualID, tradeAmount)
 	}
-
-	s.recordAudit(ctx, "AutoMatch", orderID, "",
-		fmt.Sprintf("auto-matched SELL:%s + BUY:%s amount=%.0fkWh @ ¥%.2f delivery_overlap=%v partial=%v",
-			sellOrder.ID, buyOrder.ID, tradeAmount, sellOrder.Price, best.overlap, partial))
-
-	return result, nil
+	return result, tradeAmount, residualID, nil
 }
 
 // deliveryWindowsOverlap checks if two orders' delivery windows overlap.
@@ -1179,28 +1272,211 @@ func deliveryWindowsOverlap(a, b *Order) bool {
 	return a.DeliveryStart < b.DeliveryEnd && b.DeliveryStart < a.DeliveryEnd
 }
 
-// settleMatchPair matches and settles a pair of orders.
-func (s *SmartContract) settleMatchPair(ctx contractapi.TransactionContextInterface,
-	sellOrder, buyOrder *Order, amount float64) (string, error) {
-
-	if err := s.MatchOrder(ctx, sellOrder.ID, buyOrder.PartyA); err != nil {
-		return "", fmt.Errorf("auto-match sell order failed: %v", err)
-	}
-	if err := s.MatchOrder(ctx, buyOrder.ID, sellOrder.PartyA); err != nil {
-		return "", fmt.Errorf("auto-match buy order failed: %v", err)
-	}
-	if err := s.SettleOrder(ctx, sellOrder.ID); err != nil {
-		return "", fmt.Errorf("auto-settle sell order failed: %v", err)
-	}
-	if err := s.SettleOrder(ctx, buyOrder.ID); err != nil {
-		return "", fmt.Errorf("auto-settle buy order failed: %v", err)
-	}
-
-	return fmt.Sprintf(`{"matched":true,"sellOrder":"%s","buyOrder":"%s","price":%.2f,"amount":%.0f}`,
-		sellOrder.ID, buyOrder.ID, sellOrder.Price, amount), nil
+// settleMatchedPair settles a matched order pair with a single transfer.
+//
+// Accounting model:
+//   - BUY creation locked buyer.Balance -= buyAmount × buyPrice;
+//     SELL creation locked seller.Available -= sellAmount.
+//   - The deal trades tradeAmount at the SELL price: seller receives the
+//     payment, buyer receives the energy.
+//   - The buyer's locked spread (buy.Price - sell.Price) × tradeAmount is
+//     refunded; any remainder of the locks stays attached to the residual
+//     orders, which are created without a second deduction.
+func (s *SmartContract) settleMatchedPair(ctx contractapi.TransactionContextInterface,
+	sellOrder, buyOrder *Order) (string, error) {
+	return s.executePairSettlement(ctx, sellOrder, buyOrder, "CREATED")
 }
 
-// RunAutoMatch scans all CREATED orders and attempts to match them.
+// executePairSettlement settles a SELL/BUY pair as a single deal.
+//
+// This is the only place money and energy move for a trade, which is what makes
+// double settlement impossible: both orders reach FINISHED in one transaction,
+// so settling either one again fails the status check. expectedStatus is
+// "CREATED" when the auto-matcher settles on the spot, and "MATCHED" when a
+// manually matched pair is settled later.
+func (s *SmartContract) executePairSettlement(ctx contractapi.TransactionContextInterface,
+	sellOrder, buyOrder *Order, expectedStatus string) (string, error) {
+
+	if sellOrder.ID == buyOrder.ID {
+		return "", fmt.Errorf("cannot settle order %s against itself", sellOrder.ID)
+	}
+
+	// Re-read both orders: guard against concurrent matching
+	sell, err := s.GetOrder(ctx, sellOrder.ID)
+	if err != nil {
+		return "", fmt.Errorf("settle pair: get sell order failed: %v", err)
+	}
+	buy, err := s.GetOrder(ctx, buyOrder.ID)
+	if err != nil {
+		return "", fmt.Errorf("settle pair: get buy order failed: %v", err)
+	}
+	if sell.Status != expectedStatus || buy.Status != expectedStatus {
+		return "", fmt.Errorf("settle pair: expected both orders %s, got sell=%s buy=%s",
+			expectedStatus, sell.Status, buy.Status)
+	}
+
+	seller, err := s.GetUser(ctx, sell.PartyA)
+	if err != nil {
+		return "", err
+	}
+	buyer, err := s.GetUser(ctx, buy.PartyA)
+	if err != nil {
+		return "", err
+	}
+
+	tradeAmount, payment, refund := pairSettlementMath(sell.Amount, buy.Amount, sell.Price, buy.Price)
+
+	seller.Balance += payment
+	buyer.Balance += refund
+	buyer.Available += tradeAmount
+
+	if err := s.saveUser(ctx, seller); err != nil {
+		return "", err
+	}
+	if err := s.saveUser(ctx, buyer); err != nil {
+		return "", err
+	}
+
+	// Finish both orders in this transaction (single settlement, no second
+	// money/energy movement)
+	sell.PartyB = buy.PartyA
+	buy.PartyB = sell.PartyA
+	sell.MatchedWith = buy.ID
+	buy.MatchedWith = sell.ID
+	for _, order := range []*Order{sell, buy} {
+		oldStatusKey, _ := ctx.GetStub().CreateCompositeKey(OrderStatusPrefix, []string{order.Status, order.ID})
+		ctx.GetStub().DelState(oldStatusKey)
+		order.Status = "FINISHED"
+		orderJSON, err := json.Marshal(order)
+		if err != nil {
+			return "", err
+		}
+		if err := ctx.GetStub().PutState(order.ID, orderJSON); err != nil {
+			return "", err
+		}
+		newStatusKey, _ := ctx.GetStub().CreateCompositeKey(OrderStatusPrefix, []string{order.Status, order.ID})
+		ctx.GetStub().PutState(newStatusKey, []byte{0})
+	}
+
+	// OrderUser composite keys for the counterparties
+	userKey, _ := ctx.GetStub().CreateCompositeKey(OrderUserPrefix, []string{buy.PartyA, sell.ID})
+	ctx.GetStub().PutState(userKey, []byte{0})
+	userKey2, _ := ctx.GetStub().CreateCompositeKey(OrderUserPrefix, []string{sell.PartyA, buy.ID})
+	ctx.GetStub().PutState(userKey2, []byte{0})
+
+	// One price / carbon / audit record for the deal
+	if err := s.recordPriceHistory(ctx, sell.Price, tradeAmount); err != nil {
+		return "", err
+	}
+	if err := s.recordCarbon(ctx, sell); err != nil {
+		return "", err
+	}
+
+	s.recordAudit(ctx, "SettleOrder", sell.ID, buy.PartyA,
+		fmt.Sprintf("pair-settled %.0fkWh @ ¥%.2f, carbon saved: %.2f kg",
+			tradeAmount, sell.Price, tradeAmount*sell.EnergySource.CarbonFactor()))
+	s.recordAudit(ctx, "SettleOrder", buy.ID, sell.PartyA,
+		fmt.Sprintf("pair-settled %.0fkWh @ ¥%.2f, refund ¥%.2f",
+			tradeAmount, sell.Price, refund))
+
+	ctx.GetStub().SetEvent("OrderSettled", []byte(fmt.Sprintf(
+		`{"sellOrder":"%s","buyOrder":"%s","price":%.2f,"amount":%.0f}`,
+		sell.ID, buy.ID, sell.Price, tradeAmount)))
+
+	return fmt.Sprintf(`{"matched":true,"sellOrder":"%s","buyOrder":"%s","price":%.2f,"amount":%.0f}`,
+		sell.ID, buy.ID, sell.Price, tradeAmount), nil
+}
+
+// pairSettlementMath computes the single-transfer settlement for a matched
+// order pair. Returns the traded amount, the payment at the SELL price, and
+// the refund of the buyer's locked price spread (locked at BUY creation but
+// never spent on the deal).
+func pairSettlementMath(sellAmount, buyAmount, sellPrice, buyPrice float64) (tradeAmount, payment, refund float64) {
+	tradeAmount = sellAmount
+	if buyAmount < tradeAmount {
+		tradeAmount = buyAmount
+	}
+	payment = tradeAmount * sellPrice
+	refund = tradeAmount * (buyPrice - sellPrice)
+	if refund < 0 {
+		refund = 0 // defensive: the price filter requires sellPrice <= buyPrice
+	}
+	return
+}
+
+// createResidualOrder writes a residual order without touching user balances:
+// the lock was already taken when the original order was created, and the
+// residual represents the remainder of that same lock.
+func (s *SmartContract) createResidualOrder(ctx contractapi.TransactionContextInterface,
+	id, partyA, direction, energySource, deliveryStart, deliveryEnd string,
+	amount, price, fee float64) error {
+
+	order := Order{
+		ID:            id,
+		PartyA:        partyA,
+		PartyB:        "",
+		Direction:     direction,
+		EnergySource:  EnergySource(energySource),
+		Amount:        amount,
+		Price:         price,
+		Fee:           fee,
+		Status:        "CREATED",
+		DeliveryStart: deliveryStart,
+		DeliveryEnd:   deliveryEnd,
+		CreatedAt:     s.now(ctx),
+	}
+
+	orderJSON, err := json.Marshal(order)
+	if err != nil {
+		return fmt.Errorf("failed to marshal order: %v", err)
+	}
+	if err := ctx.GetStub().PutState(id, orderJSON); err != nil {
+		return fmt.Errorf("failed to save order: %v", err)
+	}
+
+	statusKey, err := ctx.GetStub().CreateCompositeKey(OrderStatusPrefix, []string{order.Status, id})
+	if err != nil {
+		return err
+	}
+	ctx.GetStub().PutState(statusKey, []byte{0})
+
+	userKey, err := ctx.GetStub().CreateCompositeKey(OrderUserPrefix, []string{partyA, id})
+	if err != nil {
+		return err
+	}
+	ctx.GetStub().PutState(userKey, []byte{0})
+
+	s.incrementCounter(ctx, OrderCountKey)
+
+	s.recordAudit(ctx, "CreateResidualOrder", id, partyA,
+		fmt.Sprintf("residual of partial fill: dir=%s src=%s amt=%.0fkWh price=%.2f",
+			direction, energySource, amount, price))
+
+	ctx.GetStub().SetEvent("OrderCreated", orderJSON)
+	return nil
+}
+
+// updateOrderAmount trims an order to a new amount and persists it.
+func (s *SmartContract) updateOrderAmount(ctx contractapi.TransactionContextInterface,
+	order *Order, amount float64) error {
+	order.Amount = amount
+	orderJSON, err := json.Marshal(order)
+	if err != nil {
+		return fmt.Errorf("failed to marshal order: %v", err)
+	}
+	return ctx.GetStub().PutState(order.ID, orderJSON)
+}
+
+// RunAutoMatch settles the single best matchable pair in the order book and
+// reports whether it found one, as {"matched":0|1,...}.
+//
+// It deliberately stops after ONE pair. Fabric gives a transaction no
+// read-your-writes: GetState returns committed state, not what this same
+// transaction has already written. A loop settling a second pair here would
+// therefore re-read the orders it just modified in their pre-transaction form
+// and settle against stale amounts and balances. Callers drain the book by
+// invoking this repeatedly — one transaction per pair — which is what
+// handler.RunAutoMatchLoop in the backend does.
 func (s *SmartContract) RunAutoMatch(ctx contractapi.TransactionContextInterface) (string, error) {
 	allOrders, err := s.GetAllOrders(ctx, "CREATED")
 	if err != nil {
@@ -1217,42 +1493,44 @@ func (s *SmartContract) RunAutoMatch(ctx contractapi.TransactionContextInterface
 		}
 	}
 
-	matched := 0
+	// Pick the globally best pair rather than the first workable one, so the
+	// ordering of the state iterator does not decide who trades.
+	var bestSell, bestBuy *Order
+	var bestScore float64
+	var bestOverlap bool
 	for _, sell := range sellOrders {
-		if sell.Status != "CREATED" {
+		m := findBestMatch(sell, buyOrders)
+		if m == nil {
 			continue
 		}
-		for _, buy := range buyOrders {
-			if buy.Status != "CREATED" {
-				continue
-			}
-			if sell.PartyA == buy.PartyA {
-				continue
-			}
-			if sell.Price > buy.Price {
-				continue
-			}
-			// Match and settle
-			if err := s.MatchOrder(ctx, sell.ID, buy.PartyA); err != nil {
-				continue
-			}
-			if err := s.MatchOrder(ctx, buy.ID, sell.PartyA); err != nil {
-				continue
-			}
-			if err := s.SettleOrder(ctx, sell.ID); err != nil {
-				continue
-			}
-			if err := s.SettleOrder(ctx, buy.ID); err != nil {
-				continue
-			}
-			matched++
-			s.recordAudit(ctx, "AutoMatch", sell.ID, "",
-				fmt.Sprintf("batch-matched SELL %s + BUY %s @ ¥%.2f", sell.ID, buy.ID, sell.Price))
-			break // move to next sell order
+		if bestSell == nil || m.score > bestScore {
+			bestSell, bestBuy, bestScore, bestOverlap = sell, m.candidate, m.score, m.overlap
 		}
 	}
 
-	return fmt.Sprintf(`{"matched":%d,"remaining":%d}`, matched, len(allOrders)-matched*2), nil
+	if bestSell == nil {
+		return fmt.Sprintf(`{"matched":0,"remaining":%d}`, len(allOrders)), nil
+	}
+
+	_, tradeAmount, residualID, err := s.tradePair(ctx, bestSell, bestBuy)
+	if err != nil {
+		return "", err
+	}
+
+	s.recordAudit(ctx, "AutoMatch", bestSell.ID, "",
+		fmt.Sprintf("batch-matched SELL:%s + BUY:%s amount=%.0fkWh @ ¥%.2f delivery_overlap=%v partial=%v",
+			bestSell.ID, bestBuy.ID, tradeAmount, bestSell.Price, bestOverlap, residualID != ""))
+
+	// settleMatchedPair's JSON carries "matched":true; re-render the pair
+	// fields with the batch drain shape (matched as the pair count) so the
+	// response never contains the key twice.
+	partialField := ""
+	if residualID != "" {
+		partialField = fmt.Sprintf(`,"partial":true,"residualOrder":"%s","tradedAmount":%.0f`, residualID, tradeAmount)
+	}
+	return fmt.Sprintf(
+		`{"matched":1,"remaining":%d,"sellOrder":"%s","buyOrder":"%s","price":%.2f,"amount":%.0f%s}`,
+		len(allOrders)-2, bestSell.ID, bestBuy.ID, bestSell.Price, tradeAmount, partialField), nil
 }
 
 // =============================================================================
