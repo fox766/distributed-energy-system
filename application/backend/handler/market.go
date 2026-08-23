@@ -24,7 +24,7 @@ func NewMarketHandler(gw *fabric.Gateway) *MarketHandler {
 func (h *MarketHandler) GetStatus(c *gin.Context) {
 	energyResult, err := h.gw.Contract.EvaluateTransaction("GetEnergyStatus")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Error: "failed to get energy status: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Error: "failed to get energy status: " + fabric.ErrorDetail(err)})
 		return
 	}
 
@@ -60,7 +60,7 @@ func (h *MarketHandler) GetStatus(c *gin.Context) {
 func (h *MarketHandler) GetPriceHistory(c *gin.Context) {
 	result, err := h.gw.Contract.EvaluateTransaction("GetPriceHistory", "7")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Error: "failed to get price history: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Error: "failed to get price history: " + fabric.ErrorDetail(err)})
 		return
 	}
 	if len(result) == 0 || string(result) == "null" {
@@ -120,9 +120,9 @@ func (h *MarketHandler) UpdateEnergyPrice(c *gin.Context) {
 	priceStr := strconv.FormatFloat(req.Price, 'f', 2, 64)
 	feeStr := strconv.FormatFloat(req.Fee, 'f', 2, 64)
 
-	_, err := h.gw.Contract.SubmitTransaction("UpdateEnergyPrice", priceStr, feeStr)
+	_, err := h.gw.Submit("UpdateEnergyPrice", priceStr, feeStr)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Error: "failed to update energy price: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Error: "failed to update energy price: " + fabric.ErrorDetail(err)})
 		return
 	}
 
@@ -133,7 +133,7 @@ func (h *MarketHandler) UpdateEnergyPrice(c *gin.Context) {
 func (h *MarketHandler) GetTOUPrice(c *gin.Context) {
 	result, err := h.gw.Contract.EvaluateTransaction("GetTimeOfUsePrice")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Error: "failed to get TOU price: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Error: "failed to get TOU price: " + fabric.ErrorDetail(err)})
 		return
 	}
 
@@ -155,9 +155,15 @@ func (h *MarketHandler) GenerateEnergy(c *gin.Context) {
 		return
 	}
 
-	_, err := h.gw.Contract.SubmitTransaction("GenerateEnergy", userID, req.DeviceType)
+	if !allowedDeviceTypes[req.DeviceType] {
+		c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error: "deviceType must be one of SOLAR_PANEL, WIND_TURBINE, BATTERY_STORAGE"})
+		return
+	}
+
+	_, err := h.gw.Submit("GenerateEnergy", userID, req.DeviceType)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Error: "failed to generate energy: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Error: "failed to generate energy: " + fabric.ErrorDetail(err)})
 		return
 	}
 

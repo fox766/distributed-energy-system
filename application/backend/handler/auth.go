@@ -25,11 +25,38 @@ func NewAuthHandler(cfg *config.Config, s *store.CredentialStore, gw *fabric.Gat
 	return &AuthHandler{cfg: cfg, store: s, gw: gw}
 }
 
+// allowedRoles are the roles a client may assign itself at registration.
+// "admin" is deliberately absent: the JWT role is minted from this stored value
+// (see Login), so accepting it here would let anyone issue themselves an admin
+// token and walk past every AdminRequired/ProducerRequired gate.
+var allowedRoles = map[string]bool{
+	"PRODUCER": true,
+	"CONSUMER": true,
+}
+
+// allowedDeviceTypes mirrors the chaincode DeviceType constants
+// (blockchain/chaincode-go/chaincode/module.go).
+var allowedDeviceTypes = map[string]bool{
+	"SOLAR_PANEL":     true,
+	"WIND_TURBINE":    true,
+	"BATTERY_STORAGE": true,
+}
+
 // Register creates a new user on chaincode and stores credentials locally.
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req model.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: "invalid request: " + err.Error()})
+		return
+	}
+
+	if !allowedRoles[req.Role] {
+		c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: "role must be PRODUCER or CONSUMER"})
+		return
+	}
+	if !allowedDeviceTypes[req.EnergyType] {
+		c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error: "energyType must be one of SOLAR_PANEL, WIND_TURBINE, BATTERY_STORAGE"})
 		return
 	}
 
@@ -40,16 +67,18 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	userID := "energy_user_" + uuid.New().String()[:12]
 
-	// Register on chaincode
-	_, err := h.gw.Contract.SubmitTransaction("RegisterUser",
-		userID, req.Username, req.Role, "0.00", "0.00")
+	// Register on chaincode. New users are credited an initial balance so that
+	// consumers can place BUY orders, which escrow funds at creation time.
+	balStr := strconv.FormatFloat(h.cfg.InitialBalance, 'f', 2, 64)
+	_, err := h.gw.Submit("RegisterUser",
+		userID, req.Username, req.Role, "0.00", balStr)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Error: "chaincode register failed: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Error: "chaincode register failed: " + fabric.ErrorDetail(err)})
 		return
 	}
 
 	// Store credentials locally with userID
-	if err := h.store.CreateUser(req.Username, req.Password, userID, req.Role); err != nil {
+	if err := h.store.CreateUser(req.Username, req.Password, userID, req.Role, req.EnergyType); err != nil {
 		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Error: "credential store failed: " + err.Error()})
 		return
 	}
@@ -112,13 +141,15 @@ func BootstrapAdmin(cfg *config.Config, s *store.CredentialStore, gw *fabric.Gat
 	}
 
 	adminID := "energy_user_admin"
-	if err := s.CreateUser(cfg.AdminUsername, cfg.AdminPassword, adminID, "admin"); err != nil {
+	// Admin never generates energy, so the device type is inert; it only has to
+	// satisfy the column's NOT NULL constraint.
+	if err := s.CreateUser(cfg.AdminUsername, cfg.AdminPassword, adminID, "admin", store.DefaultDeviceType); err != nil {
 		return err
 	}
 
 	availStr := strconv.FormatFloat(1000000.0, 'f', 2, 64)
 	balStr := strconv.FormatFloat(1000000.0, 'f', 2, 64)
-	_, err := gw.Contract.SubmitTransaction("RegisterUser",
+	_, err := gw.Submit("RegisterUser",
 		adminID, cfg.AdminUsername, "admin", availStr, balStr)
 	return err
 }

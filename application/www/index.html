@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>分布式能源交易系统</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<link rel="stylesheet" href="css/all.min.css">
+<script src="vue.global.prod.js"></script>
+<script src="chart.umd.js"></script>
 <style>
 :root {
     --sidebar-w: 230px;
@@ -213,6 +213,7 @@ tr:hover td { background:var(--bg); }
             <div class="form-group"><label>密码</label><input class="form-control" type="password" v-model="regForm.password" placeholder="设置密码"></div>
             <div class="form-group"><label>确认密码</label><input class="form-control" type="password" v-model="regForm.confirm" placeholder="再次输入密码"></div>
             <div class="form-group"><label>角色</label><select class="form-control" v-model="regForm.role"><option value="PRODUCER">能源生产者</option><option value="CONSUMER">能源消费者</option></select></div>
+            <div class="form-group" v-if="regForm.role==='PRODUCER'"><label>发电设备</label><select class="form-control" v-model="regForm.energyType"><option value="SOLAR_PANEL">光伏板</option><option value="WIND_TURBINE">风力发电机</option><option value="BATTERY_STORAGE">储能电池</option></select></div>
             <button class="btn btn-primary" @click="doRegister" :disabled="loading">{{ loading?'注册中...':'注 册' }}</button>
             <div class="switch-text">已有账户? <a @click="authMode='login'">返回登录</a></div>
         </div>
@@ -578,7 +579,9 @@ createApp({
         const loading = ref(false), authMode = ref('login'), authError = ref(''), authMsg = ref('');
         const tab = ref('dashboard');
         const loginForm = reactive({username:'',password:''});
-        const regForm = reactive({username:'',password:'',confirm:'',role:'PRODUCER'});
+        // energyType drives which device the generation scheduler runs for this
+        // producer; consumers never generate but the field is still required.
+        const regForm = reactive({username:'',password:'',confirm:'',role:'PRODUCER',energyType:'SOLAR_PANEL'});
         const user = reactive({userID:'',userName:'',userRole:'',available:0,balance:0});
         const sysStatus = reactive({energyprice:0,fee:0,usernum:0,ordernum:0});
         const recentOrders = ref([]), marketOrders = ref([]), myOrders = ref([]), marketFilter = ref('ALL');
@@ -633,7 +636,7 @@ createApp({
             authError.value=''; loading.value=true;
             if(regForm.password!==regForm.confirm){authError.value='两次密码不一致';loading.value=false;return}
             try{
-                await api('/register',{method:'POST',body:JSON.stringify({username:regForm.username,password:regForm.password,role:regForm.role,energyType:'SOLAR'})});
+                await api('/register',{method:'POST',body:JSON.stringify({username:regForm.username,password:regForm.password,role:regForm.role,energyType:regForm.energyType})});
                 authMsg.value='注册成功! 请登录'; authMode.value='login';
             }catch(e){authError.value=e.message}
             loading.value=false;
@@ -722,7 +725,7 @@ createApp({
                             responsive:true,maintainAspectRatio:false,
                             plugins:{legend:{display:false}},
                             scales:{
-                                y:{beginAtZero:false,grid:{color:'#f3f4f6'},ticks:{callback:v=>'¥'+v}}},
+                                y:{beginAtZero:false,grid:{color:'#f3f4f6'},ticks:{callback:v=>'¥'+v}},
                                 x:{grid:{display:false}}
                             }
                         }
@@ -757,7 +760,7 @@ createApp({
                             responsive:true,maintainAspectRatio:false,
                             plugins:{legend:{display:false}},
                             scales:{
-                                y:{beginAtZero:true,grid:{color:'#f3f4f6'},ticks:{callback:v=>v+' kg'}}},
+                                y:{beginAtZero:true,grid:{color:'#f3f4f6'},ticks:{callback:v=>v+' kg'}},
                                 x:{grid:{display:false}}
                             }
                         }

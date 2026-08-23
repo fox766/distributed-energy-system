@@ -14,7 +14,14 @@ type UserRecord struct {
 	UserID       string `json:"userid"`
 	PasswordHash string `json:"passwordhash"`
 	Role         string `json:"role"`
+	// DeviceType is the generation device a PRODUCER registered with; the
+	// generation scheduler uses it instead of rotating through device types.
+	DeviceType string `json:"devicetype"`
 }
+
+// DefaultDeviceType is used for rows predating the device_type column and for
+// accounts that never generate (admin, consumers).
+const DefaultDeviceType = "SOLAR_PANEL"
 
 // CredentialStore persists user credentials in SQLite.
 type CredentialStore struct {
@@ -52,6 +59,40 @@ func (cs *CredentialStore) migrate() error {
 		);
 		CREATE INDEX IF NOT EXISTS idx_users_user_id ON users(user_id);
 	`)
+	if err != nil {
+		return err
+	}
+	return cs.addColumnIfMissing("device_type",
+		"ALTER TABLE users ADD COLUMN device_type TEXT NOT NULL DEFAULT '"+DefaultDeviceType+"'")
+}
+
+// addColumnIfMissing runs ddl only when the column is absent, so that databases
+// created before the column was introduced upgrade in place. SQLite has no
+// "ADD COLUMN IF NOT EXISTS", hence the PRAGMA probe.
+func (cs *CredentialStore) addColumnIfMissing(column, ddl string) error {
+	rows, err := cs.db.Query("PRAGMA table_info(users)")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var cid int
+		var name, colType string
+		var notNull, pk int
+		var dflt sql.NullString
+		if err := rows.Scan(&cid, &name, &colType, &notNull, &dflt, &pk); err != nil {
+			return err
+		}
+		if name == column {
+			return nil
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	_, err = cs.db.Exec(ddl)
 	return err
 }
 
@@ -61,7 +102,7 @@ func (cs *CredentialStore) Close() error {
 }
 
 // CreateUser stores username + bcrypt hash + userID. Returns error if username exists.
-func (cs *CredentialStore) CreateUser(username, password, userID, role string) error {
+func (cs *CredentialStore) CreateUser(username, password, userID, role, deviceType string) error {
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
 
@@ -69,10 +110,13 @@ func (cs *CredentialStore) CreateUser(username, password, userID, role string) e
 	if err != nil {
 		return err
 	}
+	if deviceType == "" {
+		deviceType = DefaultDeviceType
+	}
 
 	_, err = cs.db.Exec(
-		"INSERT INTO users (username, user_id, password_hash, role) VALUES (?, ?, ?, ?)",
-		username, userID, string(hash), role,
+		"INSERT INTO users (username, user_id, password_hash, role, device_type) VALUES (?, ?, ?, ?, ?)",
+		username, userID, string(hash), role, deviceType,
 	)
 	if err != nil {
 		if isConstraintError(err) {
@@ -106,8 +150,8 @@ func (cs *CredentialStore) GetUserRecord(username string) (*UserRecord, bool) {
 
 	var rec UserRecord
 	err := cs.db.QueryRow(
-		"SELECT user_id, password_hash, role FROM users WHERE username = ?", username,
-	).Scan(&rec.UserID, &rec.PasswordHash, &rec.Role)
+		"SELECT user_id, password_hash, role, device_type FROM users WHERE username = ?", username,
+	).Scan(&rec.UserID, &rec.PasswordHash, &rec.Role, &rec.DeviceType)
 	if err != nil {
 		return nil, false
 	}
@@ -130,7 +174,7 @@ func (cs *CredentialStore) GetAllUsers() map[string]*UserRecord {
 	defer cs.mu.RUnlock()
 
 	result := make(map[string]*UserRecord)
-	rows, err := cs.db.Query("SELECT username, user_id, password_hash, role FROM users")
+	rows, err := cs.db.Query("SELECT username, user_id, password_hash, role, device_type FROM users")
 	if err != nil {
 		return result
 	}
@@ -139,7 +183,7 @@ func (cs *CredentialStore) GetAllUsers() map[string]*UserRecord {
 	for rows.Next() {
 		var username string
 		var rec UserRecord
-		if err := rows.Scan(&username, &rec.UserID, &rec.PasswordHash, &rec.Role); err == nil {
+		if err := rows.Scan(&username, &rec.UserID, &rec.PasswordHash, &rec.Role, &rec.DeviceType); err == nil {
 			result[username] = &rec
 		}
 	}

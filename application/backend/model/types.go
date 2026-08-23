@@ -25,9 +25,18 @@ type CreateOrderRequest struct {
 	Direction    string  `json:"direction"` // "SELL" | "BUY", default "SELL"
 }
 
+// UpdateUserRequest uses pointers so that an omitted field ("leave as is") is
+// distinguishable from an explicit zero. With plain float64s an empty {} body
+// was indistinguishable from {"available":0} and silently wiped the balance.
 type UpdateUserRequest struct {
-	Available float64 `json:"available"`
-	Balance   float64 `json:"balance"`
+	Available *float64 `json:"available"`
+	Balance   *float64 `json:"balance"`
+}
+
+// TopUpRequest credits a user's balance. Admin-only (see the /api/admin group).
+type TopUpRequest struct {
+	UserID string  `json:"userid" binding:"required"`
+	Amount float64 `json:"amount" binding:"required"`
 }
 
 type UpdateEnergyRequest struct {
@@ -74,6 +83,7 @@ type Order struct {
 	DeliveryStart string    `json:"deliveryStart"`
 	DeliveryEnd   string    `json:"deliveryEnd"`
 	CreatedAt     time.Time `json:"createdAt"`
+	MatchedWith   string    `json:"matchedWith,omitempty"`
 }
 
 type EnergyStatus struct {
@@ -126,9 +136,17 @@ type AutoMatchResponse struct {
 	Amount    float64 `json:"amount,omitempty"`
 }
 
+// BatchMatchResponse reports a drain of the order book. When it comes straight
+// from the chaincode, Matched is 0 or 1 (one pair per transaction); the backend
+// loop sums those into the total it returns to the client.
 type BatchMatchResponse struct {
 	Matched   int `json:"matched"`
 	Remaining int `json:"remaining"`
+}
+
+// MatchOrderRequest names the counterpart ORDER (not user) to pair with.
+type MatchOrderRequest struct {
+	CounterpartyOrderID string `json:"counterpartyOrderId" binding:"required"`
 }
 
 // --- P3: Transaction History ---

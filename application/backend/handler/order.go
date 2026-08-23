@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -47,12 +48,12 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 	priceStr := strconv.FormatFloat(req.Price, 'f', 2, 64)
 	feeStr := "0.01"
 
-	_, err := h.gw.Contract.SubmitTransaction("CreateOrder",
+	_, err := h.gw.Submit("CreateOrder",
 		orderID, userID, req.Direction, req.EnergySource,
 		req.DeliveryStart, req.DeliveryEnd,
 		amountStr, priceStr, feeStr)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Error: "failed to create order: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Error: "failed to create order: " + fabric.ErrorDetail(err)})
 		return
 	}
 
@@ -65,7 +66,7 @@ func (h *OrderHandler) GetOrder(c *gin.Context) {
 
 	result, err := h.gw.Contract.EvaluateTransaction("GetOrder", orderID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, model.ErrorResponse{Error: "order not found: " + err.Error()})
+		c.JSON(http.StatusNotFound, model.ErrorResponse{Error: "order not found: " + fabric.ErrorDetail(err)})
 		return
 	}
 
@@ -83,7 +84,7 @@ func (h *OrderHandler) ListOrders(c *gin.Context) {
 
 	result, err := h.gw.Contract.EvaluateTransaction("GetAllOrders", status)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Error: "failed to list orders: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Error: "failed to list orders: " + fabric.ErrorDetail(err)})
 		return
 	}
 
@@ -110,7 +111,7 @@ func (h *OrderHandler) ListMyOrders(c *gin.Context) {
 
 	result, err := h.gw.Contract.EvaluateTransaction("GetUserOrders", userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Error: "failed to list orders: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Error: "failed to list orders: " + fabric.ErrorDetail(err)})
 		return
 	}
 
@@ -130,14 +131,23 @@ func (h *OrderHandler) ListMyOrders(c *gin.Context) {
 	c.JSON(http.StatusOK, orders)
 }
 
-// MatchOrder matches a CREATED order with the authenticated user as buyer.
+// MatchOrder manually pairs this order with a specific counterpart order.
+//
+// The counterpart is identified by order ID rather than user ID: a matched pair
+// must know which two orders form it, otherwise settlement cannot tell which
+// amounts to trade and each side ends up settled independently.
 func (h *OrderHandler) MatchOrder(c *gin.Context) {
 	orderID := c.Param("id")
-	userID := middleware.GetUserID(c)
 
-	_, err := h.gw.Contract.SubmitTransaction("MatchOrder", orderID, userID)
+	var req model.MatchOrderRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: "invalid request: " + err.Error()})
+		return
+	}
+
+	_, err := h.gw.Submit("MatchOrder", orderID, req.CounterpartyOrderID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: "failed to match order: " + err.Error()})
+		c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: "failed to match order: " + fabric.ErrorDetail(err)})
 		return
 	}
 	c.JSON(http.StatusOK, model.MessageResponse{Message: "order matched"})
@@ -151,7 +161,7 @@ func (h *OrderHandler) SettleOrder(c *gin.Context) {
 	// Verify ownership: only partyA or partyB can settle
 	order, err := h.getOrderByID(orderID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, model.ErrorResponse{Error: "order not found: " + err.Error()})
+		c.JSON(http.StatusNotFound, model.ErrorResponse{Error: "order not found: " + fabric.ErrorDetail(err)})
 		return
 	}
 	if order.PartyA != userID && order.PartyB != userID {
@@ -159,9 +169,9 @@ func (h *OrderHandler) SettleOrder(c *gin.Context) {
 		return
 	}
 
-	_, err = h.gw.Contract.SubmitTransaction("SettleOrder", orderID)
+	_, err = h.gw.Submit("SettleOrder", orderID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: "failed to settle order: " + err.Error()})
+		c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: "failed to settle order: " + fabric.ErrorDetail(err)})
 		return
 	}
 	c.JSON(http.StatusOK, model.MessageResponse{Message: "order settled"})
@@ -175,7 +185,7 @@ func (h *OrderHandler) CancelOrder(c *gin.Context) {
 	// Verify ownership: only partyA (creator) can cancel
 	order, err := h.getOrderByID(orderID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, model.ErrorResponse{Error: "order not found: " + err.Error()})
+		c.JSON(http.StatusNotFound, model.ErrorResponse{Error: "order not found: " + fabric.ErrorDetail(err)})
 		return
 	}
 	if order.PartyA != userID {
@@ -183,9 +193,9 @@ func (h *OrderHandler) CancelOrder(c *gin.Context) {
 		return
 	}
 
-	_, err = h.gw.Contract.SubmitTransaction("CancelOrder", orderID)
+	_, err = h.gw.Submit("CancelOrder", orderID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: "failed to cancel order: " + err.Error()})
+		c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: "failed to cancel order: " + fabric.ErrorDetail(err)})
 		return
 	}
 	c.JSON(http.StatusOK, model.MessageResponse{Message: "order cancelled"})
@@ -208,34 +218,59 @@ func (h *OrderHandler) getOrderByID(orderID string) (*model.Order, error) {
 func (h *OrderHandler) AutoMatchOrder(c *gin.Context) {
 	orderID := c.Param("id")
 
-	result, err := h.gw.Contract.SubmitTransaction("AutoMatchOrder", orderID)
+	result, err := h.gw.Submit("AutoMatchOrder", orderID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: "auto-match failed: " + err.Error()})
+		c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: "auto-match failed: " + fabric.ErrorDetail(err)})
 		return
 	}
 
 	var matchResp model.AutoMatchResponse
 	if err := json.Unmarshal(result, &matchResp); err != nil {
-		c.JSON(http.StatusOK, model.AutoMatchResponse{Matched: false, Message: "failed to parse match result"})
+		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Error: "failed to parse match result"})
 		return
 	}
 	c.JSON(http.StatusOK, matchResp)
 }
 
-// RunAutoMatch triggers batch auto-matching for all CREATED orders.
-func (h *OrderHandler) RunAutoMatch(c *gin.Context) {
-	result, err := h.gw.Contract.SubmitTransaction("RunAutoMatch")
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Error: "batch auto-match failed: " + err.Error()})
-		return
-	}
+// maxAutoMatchRounds caps a single drain so a pathological order book cannot
+// spin the scheduler forever.
+const maxAutoMatchRounds = 50
 
-	var matchResp model.BatchMatchResponse
-	if err := json.Unmarshal(result, &matchResp); err != nil {
-		c.JSON(http.StatusOK, model.BatchMatchResponse{Matched: 0})
+// RunAutoMatchLoop drives the chaincode's auto-matcher to quiescence and
+// returns the number of pairs settled.
+//
+// The chaincode settles at most ONE pair per transaction on purpose: Fabric
+// does not offer read-your-writes, so a second pair processed inside the same
+// transaction would read the pre-transaction state of orders the first pair
+// already modified and settle against stale amounts. Draining therefore has to
+// happen out here, one transaction per pair.
+func RunAutoMatchLoop(gw *fabric.Gateway, maxRounds int) (int, error) {
+	settled := 0
+	for round := 0; round < maxRounds; round++ {
+		result, err := gw.Submit("RunAutoMatch")
+		if err != nil {
+			return settled, err
+		}
+		var resp model.BatchMatchResponse
+		if err := json.Unmarshal(result, &resp); err != nil {
+			return settled, fmt.Errorf("parse auto-match result %q: %w", string(result), err)
+		}
+		if resp.Matched == 0 {
+			return settled, nil
+		}
+		settled += resp.Matched
+	}
+	return settled, nil
+}
+
+// RunAutoMatch drains the order book of all matchable pairs.
+func (h *OrderHandler) RunAutoMatch(c *gin.Context) {
+	settled, err := RunAutoMatchLoop(h.gw, maxAutoMatchRounds)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Error: "batch auto-match failed: " + fabric.ErrorDetail(err)})
 		return
 	}
-	c.JSON(http.StatusOK, matchResp)
+	c.JSON(http.StatusOK, model.BatchMatchResponse{Matched: settled})
 }
 
 // getTOUPrice fetches the current time-of-use electricity price from chaincode.
