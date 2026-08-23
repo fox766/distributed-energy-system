@@ -114,7 +114,7 @@ docker compose up -d
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/register` | 注册用户（username, password, role） |
+| POST | `/api/register` | 注册用户（username, password, role=PRODUCER\|CONSUMER, energyType），赠送初始余额（`INITIAL_BALANCE`，默认 ¥1000） |
 | POST | `/api/login` | 登录，返回 JWT token |
 | GET | `/api/market/status` | 系统状态（电价、用户数、订单数） |
 | GET | `/api/market/tou-price` | 当前分时电价和时段 |
@@ -132,21 +132,38 @@ docker compose up -d
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/api/user/me` | 当前用户信息 |
-| PUT | `/api/user/me` | 更新用户可用能源（余额不可自改） |
+| PUT | `/api/user/me` | 更新用户信息（available/balance 均仅 admin 可设；非 admin 一律 403） |
 | POST | `/api/orders` | 创建订单（price=0 自动使用 TOU 电价） |
 | GET | `/api/orders/mine` | 我的订单 |
-| POST | `/api/orders/:id/match` | 手动匹配订单 |
-| POST | `/api/orders/:id/auto-match` | 自动撮合此订单 |
-| POST | `/api/orders/:id/settle` | 结算订单（需为交易方） |
+| POST | `/api/orders/:id/match` | 手动配对两笔订单（body: `{"counterpartyOrderId":"..."}`） |
+| POST | `/api/orders/:id/auto-match` | 自动撮合此订单（撮合即结算，CREATED→FINISHED） |
+| POST | `/api/orders/:id/settle` | 结算 MATCHED 订单对（整对原子结算，第二次结算被拒） |
 | POST | `/api/orders/:id/cancel` | 取消订单（需为创建者） |
-| POST | `/api/generate` | 手动发电（仅 PRODUCER/admin） |
+| POST | `/api/generate` | 手动发电（仅 PRODUCER/admin；deviceType 须为 SOLAR_PANEL/WIND_TURBINE/BATTERY_STORAGE） |
 
 ### 管理员接口（需 admin 角色）
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | POST | `/api/admin/energy-price` | 更新电价 |
-| POST | `/api/admin/auto-match` | 批量撮合所有待撮合订单 |
+| POST | `/api/admin/auto-match` | 批量撮合所有待撮合订单（循环排空账本，返回撮合对数） |
+| POST | `/api/admin/user/top-up` | 给用户充值（body: `{"userid":"...","amount":500}`） |
+
+### 环境变量
+
+| 变量 | 默认 | 说明 |
+|------|------|------|
+| `PORT` | `8080` | 后端监听端口 |
+| `INITIAL_BALANCE` | `1000` | 新用户注册时的初始余额 |
+| `DISABLE_SCHEDULERS` | 未设置 | 设置为任意值可关闭自动发电/自动撮合调度器（便于确定性测试） |
+| `FABRIC_PEER_ADDRESS` | `dns:///localhost:7051` | Peer 地址（Docker 部署时改） |
+| `JWT_SECRET` / `ADMIN_USERNAME` / `ADMIN_PASSWORD` | — | 安全相关配置 |
+
+### 撮合与结算模型
+
+- **主链路（自动撮合）**：创建订单后由 15s 调度器或 `POST /api/orders/:id/auto-match` 撮合。撮合即结算：一次交易内完成转账、交付，订单直接 CREATED→FINISHED，部分成交自动拆分残单。
+- **手动链路**：`POST /api/orders/:id/match` 显式配对两笔订单（互相记录 `matchedWith`），随后任一方 `settle` 都会**原子结算整对**——第二次结算会被拒绝，同一笔交易不可能重复结算。
+- **调度器实现细节**：链码一次只撮合一对（Fabric 无 read-your-writes，批量结算会读到旧状态），后端循环调用直到账本排空。
 
 ## 项目结构
 
